@@ -1,0 +1,720 @@
+--[[
+════════════════════════════════════════════════════════════════════════════════
+🐾 CHUPPY HUB V2 — LƯỢT 2/10 (CORE SYSTEM - COMPLETE & OPTIMIZED)
+CORE SYSTEM · CONFIG · REMOTE WRAPPER · MONSTER HELPERS · WEBHOOK · KEYBINDS
+════════════════════════════════════════════════════════════════════════════════
+--]]
+​-- ═══════════════════════════════════════════════════════════════════════════════
+-- [2.0] SERVICES & CONSTANTS
+-- ═══════════════════════════════════════════════════════════════════════════════
+​local Players              = game:GetService("Players")
+local ReplicatedStorage    = game:GetService("ReplicatedStorage")
+local Workspace            = game:GetService("Workspace")
+local RunService           = game:GetService("RunService")
+local UserInputService     = game:GetService("UserInputService")
+local TweenService         = game:GetService("TweenService")
+local HttpService          = game:GetService("HttpService")
+local TeleportService      = game:GetService("TeleportService")
+local CollectionService    = game:GetService("CollectionService")
+local Lighting             = game:GetService("Lighting")
+local StarterGui           = game:GetService("StarterGui")
+local VirtualUser          = game:GetService("VirtualUser")
+local VirtualInputManager  = game:GetService("VirtualInputManager")
+local CoreGui              = game:GetService("CoreGui")
+local GuiService           = game:GetService("GuiService")
+local ContextActionService = game:GetService("ContextActionService")
+local SoundService         = game:GetService("SoundService")
+​local LP     = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+​-- Reuse theme and components from Part 1
+local Theme        = getgenv().ChuppyTheme or {}
+local UILibrary    = getgenv().ChuppyUI
+local Notification = getgenv().ChuppyNotification
+local Modal        = getgenv().ChuppyModal
+​-- ═══ CONSTANTS ═══
+local Constant = {
+-- PlaceIds Blox Fruits
+PLACE_IDS = {
+SEA1 = { 2753915549, 85211729168715 },
+SEA2 = { 4442272183, 79091703265657 },
+SEA3 = { 7449423635, 100117331123089 },
+},
+​-- Storage
+CONFIG_FOLDER = "ChuppyHub",
+CONFIG_FILE   = "config.json",
+STATS_FILE    = "stats.json",
+​-- Timing
+TICK_RATE       = 0.1,
+FAST_TICK       = 0.05,
+SLOW_TICK       = 0.5,
+CONFIG_AUTOSAVE = 30,
+​-- Game constants
+MAX_LEVEL      = 2850,
+MAX_BELI_CAP   = 999999999,
+BASE_WALKSPEED = 16,
+BASE_JUMPPOWER = 50,
+​-- Webhook & Noti
+WEBHOOK_COOLDOWN   = 2,
+WEBHOOK_MAX_QUEUE  = 10,
+NOTI_SPAM_COOLDOWN = 3,
+}
+​getgenv().ChuppyConstant = Constant
+​-- ═══════════════════════════════════════════════════════════════════════════════
+-- [2.1] GLOBAL STATE MANAGEMENT
+-- ═══════════════════════════════════════════════════════════════════════════════
+​local State = {
+-- Runtime Status
+Running     = true,
+Unloaded    = false,
+Version     = "2.0.0",
+StartTime   = tick(),
+LoadTime    = os.date("%Y-%m-%d %H:%M:%S"),
+World       = 0,
+​-- Feature Toggles
+AutoFarm             = false,
+AutoFarmBoss         = false,
+AutoFarmMaterial     = false,
+AutoFarmChest        = false,
+MobAura              = false,
+AutoRaid             = false,
+AutoSeaBeast         = false,
+AutoLeviathan        = false,
+KillAura             = false,
+AutoFish             = false,
+AutoRace             = false,
+AutoCDK              = false,
+ESPEnabled           = false,
+ESPFruit             = false,
+ESPChest             = false,
+AimbotEnabled        = false,
+AutoHaki             = true,
+AutoStoreFruit       = false,
+AutoRedeem           = false,
+AutoRejoinDisconnect = true,
+NoClip               = false,
+FullBright           = false,
+WalkWater            = false,
+WebhookEnabled       = false,
+WebhookNotiFruit     = false,
+WebhookNotiBoss      = false,
+​-- Numeric & Option Configurations
+WalkSpeed          = 16,
+JumpPower          = 50,
+FarmSpeed          = 350,
+MobAuraRange       = 250,
+AimbotFOV          = 100,
+BringMobDistance   = 300,
+WebhookURL         = "",
+SelectedBoss       = "",
+SelectedMaterial   = "",
+SelectedRaid       = "",
+​-- Player Data Cache
+PlayerData = {
+Level      = 0,
+Beli       = 0,
+Fragments  = 0,
+DevilFruit = "",
+Race       = "",
+Team       = "",
+LastUpdate = 0,
+},
+​-- Session Statistics
+Stats = {
+MobsKilled      = 0,
+BossesKilled    = 0,
+ChestsCollected = 0,
+FruitsStored    = 0,
+RaidsCompleted  = 0,
+Deaths          = 0,
+DamageDealt     = 0,
+SessionTime     = 0,
+},
+​-- Farm Runtime Target Indicators
+CurrentTarget   = nil,
+CurrentQuest    = nil,
+CurrentBoss     = nil,
+CurrentMaterial = nil,
+CurrentWeapon   = "Melee",
+CurrentFarmMode = "Quest",
+​-- Core Containers
+_connections = {},
+_threads     = {},
+_cache       = {},
+_cooldowns   = {},
+_notiSpam    = {},
+}
+​getgenv().ChuppyState = State
+​-- ═══ LIFE CYCLE TRACKING & THREAD SAFETY ═══
+local function Track(conn)
+if conn then
+table.insert(State._connections, conn)
+end
+return conn
+end
+​local function TrackThread(thread)
+if thread then
+table.insert(State._threads, thread)
+end
+return thread
+end
+​local function SafeSpawn(fn, ...)
+local args = { ... }
+local thread = task.spawn(function()
+local ok, err = pcall(fn, table.unpack(args))
+if not ok and State.Running then
+warn("[Chuppy Thread Error]:", err)
+end
+end)
+TrackThread(thread)
+return thread
+end
+​local function CheckCooldown(key, duration)
+local now = tick()
+if not State._cooldowns[key] or (now - State._cooldowns[key] >= duration) then
+State._cooldowns[key] = now
+return true
+end
+return false
+end
+​local function Notify(title, desc, notiType, duration)
+notiType = notiType or "info"
+duration = duration or 4
+​local key = tostring(title) .. "|" .. tostring(desc or "")
+local now = tick()
+if State._notiSpam[key] and (now - State._notiSpam[key]) < Constant.NOTI_SPAM_COOLDOWN then
+return
+end
+State._notiSpam[key] = now
+​if Notification and Notification.Show then
+return Notification.Show({
+Type     = notiType,
+Title    = title,
+Desc     = desc,
+Duration = duration,
+})
+end
+end
+​-- ═══════════════════════════════════════════════════════════════════════════════
+-- [2.2] PLAYER / CHARACTER UTILITIES
+-- ═══════════════════════════════════════════════════════════════════════════════
+​local PlayerUtils = {}
+​function PlayerUtils.GetCharacter()
+local char = LP.Character
+return (char and char:FindFirstChild("HumanoidRootPart")) and char or nil
+end
+​function PlayerUtils.GetHRP()
+local char = PlayerUtils.GetCharacter()
+return char and char:FindFirstChild("HumanoidRootPart")
+end
+​function PlayerUtils.GetHumanoid()
+local char = PlayerUtils.GetCharacter()
+return char and char:FindFirstChildOfClass("Humanoid")
+end
+​function PlayerUtils.IsAlive()
+local hum = PlayerUtils.GetHumanoid()
+return hum and hum.Health > 0
+end
+​function PlayerUtils.GetPosition()
+local hrp = PlayerUtils.GetHRP()
+return hrp and hrp.Position or Vector3.zero
+end
+​function PlayerUtils.GetCFrame()
+local hrp = PlayerUtils.GetHRP()
+return hrp and hrp.CFrame or CFrame.new()
+end
+​local function GetDataFolder()
+return LP:FindFirstChild("Data")
+end
+​function PlayerUtils.GetLevel()
+local data = GetDataFolder()
+local lvl = data and data:FindFirstChild("Level")
+return lvl and lvl.Value or 0
+end
+​function PlayerUtils.GetBeli()
+local data = GetDataFolder()
+local beli = data and data:FindFirstChild("Beli")
+return beli and beli.Value or 0
+end
+​function PlayerUtils.GetFragments()
+local data = GetDataFolder()
+local frag = data and data:FindFirstChild("Fragments")
+return frag and frag.Value or 0
+end
+​function PlayerUtils.GetDevilFruit()
+local data = GetDataFolder()
+local df = data and data:FindFirstChild("DevilFruit")
+return df and df.Value or ""
+end
+​function PlayerUtils.GetRace()
+local data = GetDataFolder()
+local race = data and data:FindFirstChild("Race")
+return race and race.Value or ""
+end
+​function PlayerUtils.GetTeam()
+local team = LP.Team
+return team and team.Name or "None"
+end
+​function PlayerUtils.UpdateData()
+local now = tick()
+if now - State.PlayerData.LastUpdate < 0.2 then return end
+​State.PlayerData.Level      = PlayerUtils.GetLevel()
+State.PlayerData.Beli       = PlayerUtils.GetBeli()
+State.PlayerData.Fragments  = PlayerUtils.GetFragments()
+State.PlayerData.DevilFruit = PlayerUtils.GetDevilFruit()
+State.PlayerData.Race       = PlayerUtils.GetRace()
+State.PlayerData.Team       = PlayerUtils.GetTeam()
+State.PlayerData.LastUpdate = now
+end
+​function PlayerUtils.GetWorld()
+local pid = game.PlaceId
+for _, id in ipairs(Constant.PLACE_IDS.SEA1) do
+if pid == id then return 1 end
+end
+for _, id in ipairs(Constant.PLACE_IDS.SEA2) do
+if pid == id then return 2 end
+end
+for _, id in ipairs(Constant.PLACE_IDS.SEA3) do
+if pid == id then return 3 end
+end
+return 0
+end
+​State.World = PlayerUtils.GetWorld()
+getgenv().ChuppyPlayer = PlayerUtils
+​-- ═══════════════════════════════════════════════════════════════════════════════
+-- [2.3] CONFIGURATION SYSTEM
+-- ═══════════════════════════════════════════════════════════════════════════════
+​local Config = {}
+​Config.SaveKeys = {
+"AutoFarm", "AutoFarmBoss", "AutoFarmMaterial", "AutoFarmChest",
+"AutoHaki", "AutoStoreFruit", "CurrentWeapon", "CurrentFarmMode",
+"AutoRaid", "AutoSeaBeast", "AutoLeviathan", "AutoRace", "AutoCDK",
+"AutoRedeem", "KillAura", "AimbotEnabled", "ESPFruit", "ESPChest",
+"WalkSpeed", "JumpPower", "FarmSpeed", "MobAuraRange", "AimbotFOV",
+"BringMobDistance", "SelectedBoss", "SelectedMaterial", "SelectedRaid",
+"WebhookURL", "WebhookEnabled", "WebhookNotiFruit", "WebhookNotiBoss",
+"NoClip", "FullBright", "WalkWater", "AutoRejoinDisconnect"
+}
+​local function EnsureFolder()
+pcall(function()
+if isfolder and not isfolder(Constant.CONFIG_FOLDER) then
+makefolder(Constant.CONFIG_FOLDER)
+end
+end)
+end
+​local function GetConfigPath()
+return Constant.CONFIG_FOLDER .. "/" .. Constant.CONFIG_FILE
+end
+​function Config.Save()
+if not writefile then return false end
+EnsureFolder()
+​local data = {}
+for _, key in ipairs(Config.SaveKeys) do
+if State[key] ~= nil then
+data[key] = State[key]
+end
+end
+​local ok, err = pcall(function()
+writefile(GetConfigPath(), HttpService:JSONEncode(data))
+end)
+return ok
+end
+​function Config.Load()
+if not readfile or not isfile then return false end
+EnsureFolder()
+​local path = GetConfigPath()
+if not isfile(path) then return false end
+​local ok, data = pcall(function()
+return HttpService:JSONDecode(readfile(path))
+end)
+​if ok and type(data) == "table" then
+for key, value in pairs(data) do
+if State[key] ~= nil then
+State[key] = value
+end
+end
+return true
+end
+return false
+end
+​function Config.Reset()
+if delfile and isfile and isfile(GetConfigPath()) then
+pcall(delfile, GetConfigPath())
+end
+end
+​-- Stats Management
+local Stats = {}
+​function Stats.Save()
+if not writefile then return false end
+EnsureFolder()
+local path = Constant.CONFIG_FOLDER .. "/" .. Constant.STATS_FILE
+return pcall(function()
+writefile(path, HttpService:JSONEncode(State.Stats))
+end)
+end
+​function Stats.Load()
+if not readfile or not isfile then return false end
+local path = Constant.CONFIG_FOLDER .. "/" .. Constant.STATS_FILE
+if not isfile(path) then return false end
+​local ok, data = pcall(function()
+return HttpService:JSONDecode(readfile(path))
+end)
+​if ok and type(data) == "table" then
+for k, v in pairs(data) do
+if type(v) == "number" then
+State.Stats[k] = v
+end
+end
+end
+end
+​getgenv().ChuppyConfig = Config
+getgenv().ChuppyStats  = Stats
+​Config.Load()
+Stats.Load()
+​SafeSpawn(function()
+while State.Running do
+task.wait(Constant.CONFIG_AUTOSAVE)
+if not State.Running then break end
+pcall(Config.Save)
+pcall(Stats.Save)
+end
+end)
+​-- ═══════════════════════════════════════════════════════════════════════════════
+-- [2.4] REMOTE WRAPPER
+-- ═══════════════════════════════════════════════════════════════════════════════
+​local Remote = {}
+​local function GetCommF()
+local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+return remotes and remotes:FindFirstChild("CommF_")
+end
+​local function GetCommE()
+local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+return remotes and remotes:FindFirstChild("CommE")
+end
+​function Remote.Invoke(...)
+local commF = GetCommF()
+if not commF then return nil end
+local args = { ... }
+local ok, res = pcall(function()
+return commF:InvokeServer(table.unpack(args))
+end)
+return ok and res or nil
+end
+​function Remote.FireCommE(...)
+local commE = GetCommE()
+if not commE then return false end
+local args = { ... }
+return pcall(function()
+commE:FireServer(table.unpack(args))
+end)
+end
+​function Remote.Fire(remote, ...)
+if not remote then return false end
+local args = { ... }
+return pcall(function()
+remote:FireServer(table.unpack(args))
+end)
+end
+​Remote.StartQuest   = function(questName, level) return Remote.Invoke("StartQuest", questName, level) end
+Remote.AbandonQuest = function() return Remote.Invoke("AbandonQuest") end
+Remote.BuyHaki       = function(haki) return Remote.Invoke("BuyHaki", haki) end
+Remote.Buso          = function() return Remote.Invoke("Buso") end
+Remote.StoreFruit    = function(name, tool) return Remote.Invoke("StoreFruit", name, tool) end
+Remote.LoadFruit     = function(name) return Remote.Invoke("LoadItem", name) end
+Remote.BuyBoat       = function(boat) return Remote.Invoke("BuyBoat", boat) end
+​getgenv().ChuppyRemote = Remote
+​-- ═══════════════════════════════════════════════════════════════════════════════
+-- [2.5] MONSTER / MOB HELPERS
+-- ═══════════════════════════════════════════════════════════════════════════════
+​local Monster = {}
+​function Monster.Find(name)
+local search = name and string.lower(name) or nil
+local enemiesFolder = Workspace:FindFirstChild("Enemies")
+​if enemiesFolder then
+for _, v in ipairs(enemiesFolder:GetChildren()) do
+if v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+if not search or string.find(string.lower(v.Name), search, 1, true) then
+return v
+end
+end
+end
+end
+​if search then
+for _, v in ipairs(Workspace:GetChildren()) do
+if v:IsA("Model") and string.find(string.lower(v.Name), search, 1, true)
+and v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+return v
+end
+end
+end
+​if name then
+local rsMob = ReplicatedStorage:FindFirstChild(name)
+if rsMob and rsMob:FindFirstChild("HumanoidRootPart") then
+return rsMob
+end
+end
+return nil
+end
+​function Monster.FindNearest(maxDistance)
+maxDistance = maxDistance or 5000
+local hrp = PlayerUtils.GetHRP()
+if not hrp then return nil end
+​local enemiesFolder = Workspace:FindFirstChild("Enemies")
+if not enemiesFolder then return nil end
+​local nearest, shortest = nil, maxDistance
+for _, v in ipairs(enemiesFolder:GetChildren()) do
+if v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+local dist = (v.HumanoidRootPart.Position - hrp.Position).Magnitude
+if dist < shortest then
+shortest = dist
+nearest = v
+end
+end
+end
+return nearest
+end
+​function Monster.FindInRange(range)
+range = range or 300
+local hrp = PlayerUtils.GetHRP()
+if not hrp then return {} end
+​local list = {}
+local enemiesFolder = Workspace:FindFirstChild("Enemies")
+if not enemiesFolder then return list end
+​for _, v in ipairs(enemiesFolder:GetChildren()) do
+if v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+local dist = (v.HumanoidRootPart.Position - hrp.Position).Magnitude
+if dist <= range then
+table.insert(list, { mob = v, distance = dist })
+end
+end
+end
+table.sort(list, function(a, b) return a.distance < b.distance end)
+return list
+end
+​-- Optimized Bring Logic with BodyVelocity Anchor & Collision Override
+function Monster.Bring(mob, targetCF)
+if not mob or not mob:FindFirstChild("HumanoidRootPart") then return end
+pcall(function()
+local hrp = mob.HumanoidRootPart
+local hum = mob:FindFirstChildOfClass("Humanoid")
+​hrp.CFrame = targetCF
+hrp.CanCollide = false
+if hum then
+hum.WalkSpeed = 0
+hum.JumpPower = 0
+end
+​local bv = hrp:FindFirstChild("BringLock")
+if not bv then
+bv = Instance.new("BodyVelocity")
+bv.Name = "BringLock"
+bv.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+bv.Velocity = Vector3.zero
+bv.Parent = hrp
+end
+end)
+end
+​function Monster.BringAll(mobs, targetCF, radius)
+radius = radius or State.BringMobDistance
+local hrp = PlayerUtils.GetHRP()
+if not hrp or not targetCF then return end
+​for _, entry in ipairs(mobs or {}) do
+local m = entry.mob or entry
+if m and m:FindFirstChild("HumanoidRootPart") then
+if (m.HumanoidRootPart.Position - hrp.Position).Magnitude <= radius then
+Monster.Bring(m, targetCF)
+end
+end
+end
+end
+​function Monster.IsAlive(mob)
+if not mob or not mob.Parent then return false end
+local hum = mob:FindFirstChildOfClass("Humanoid")
+return hum and hum.Health > 0
+end
+​getgenv().ChuppyMonster = Monster
+​-- ═══════════════════════════════════════════════════════════════════════════════
+-- [2.6] DISCORD WEBHOOK SYSTEM
+-- ═══════════════════════════════════════════════════════════════════════════════
+​local Webhook = {}
+local webhookQueue = {}
+local webhookSending = false
+​local COLORS = {
+info    = 3447003,
+success = 5763719,
+warning = 16776960,
+danger  = 15548997,
+fruit   = 16711935,
+boss    = 16750592,
+}
+​local function ProcessQueue()
+if webhookSending or #webhookQueue == 0 then return end
+webhookSending = true
+​local item = table.remove(webhookQueue, 1)
+local req = request or http_request or (syn and syn.request) or (http and http.request)
+​if req then
+SafeSpawn(function()
+pcall(function()
+req({
+Url     = item.url,
+Method  = "POST",
+Headers = { ["Content-Type"] = "application/json" },
+Body    = HttpService:JSONEncode(item.payload),
+})
+end)
+task.wait(Constant.WEBHOOK_COOLDOWN)
+webhookSending = false
+ProcessQueue()
+end)
+else
+webhookSending = false
+end
+end
+​function Webhook.Send(config)
+if not State.WebhookEnabled or not State.WebhookURL or State.WebhookURL == "" then return end
+​local fields = config.Fields or {}
+table.insert(fields, { name = "👤 Player", value = "" .. LP.Name .. "", inline = true })
+table.insert(fields, { name = "📊 Level", value = "" .. tostring(PlayerUtils.GetLevel()) .. "", inline = true })
+table.insert(fields, { name = "🌍 Sea", value = "" .. tostring(State.World) .. "", inline = true })
+​local embed = {
+title       = config.Title or "Chuppy Hub V2",
+description = config.Description or "",
+color       = config.Color or COLORS[config.Type or "info"] or COLORS.info,
+fields      = fields,
+footer      = { text = "Chuppy Hub V2 | " .. os.date("%H:%M:%S") },
+timestamp   = os.date("!%Y-%m-%dT%H:%M:%SZ")
+}
+​if #webhookQueue < Constant.WEBHOOK_MAX_QUEUE then
+table.insert(webhookQueue, {
+url     = State.WebhookURL,
+payload = { username = "Chuppy Hub V2", embeds = { embed } }
+})
+ProcessQueue()
+end
+end
+​getgenv().ChuppyWebhook = Webhook
+​-- ═══════════════════════════════════════════════════════════════════════════════
+-- [2.7] KEYBIND & INPUT MANAGER
+-- ═══════════════════════════════════════════════════════════════════════════════
+​local KeybindManager = {}
+local binds = {}
+​function KeybindManager.Bind(action, keyCode, callback)
+if not keyCode or not callback then return end
+binds[keyCode] = binds[keyCode] or {}
+table.insert(binds[keyCode], { action = action, callback = callback })
+end
+​function KeybindManager.Unbind(action)
+for keyCode, list in pairs(binds) do
+for i = #list, 1, -1 do
+if list[i].action == action then
+table.remove(list, i)
+end
+end
+end
+end
+​Track(UserInputService.InputBegan:Connect(function(input, gameProcessed)
+if gameProcessed then return end
+if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+​local list = binds[input.KeyCode]
+if list then
+for _, item in ipairs(list) do
+pcall(item.callback, input.KeyCode)
+end
+end
+end))
+​-- Default Binds
+KeybindManager.Bind("ToggleUI", Enum.KeyCode.RightShift, function()
+local screenGui = getgenv().ChuppyScreenGui
+if screenGui then
+local main = screenGui:FindFirstChild("MainWindow")
+if main then main.Visible = not main.Visible end
+end
+end)
+​KeybindManager.Bind("PanicStop", Enum.KeyCode.End, function()
+State.AutoFarm = false
+State.MobAura  = false
+State.KillAura = false
+Notify("Panic", "Đã dừng khẩn cấp toàn bộ hệ thống farm!", "danger")
+end)
+​getgenv().ChuppyKeybind = KeybindManager
+​-- ═══════════════════════════════════════════════════════════════════════════════
+-- [2.8 & 2.9] SERVER MANAGER & UNLOAD HANDLER
+-- ═══════════════════════════════════════════════════════════════════════════════
+​local ServerManager = {}
+​function ServerManager.Rejoin()
+Notify("Server", "Đang kết nối lại server...", "info")
+task.delay(0.5, function()
+pcall(function()
+TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LP)
+end)
+end)
+end
+​function ServerManager.Hop()
+if not CheckCooldown("serverhop", 15) then
+Notify("Server", "Vui lòng đợi vài giây trước khi hop tiếp", "warning")
+return
+end
+​Notify("Server", "Đang tìm server phù hợp...", "info")
+SafeSpawn(function()
+local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+local ok, res = pcall(function()
+return HttpService:JSONEncode(game:HttpGet(url))
+end)
+​if ok and res and res.data then
+for _, srv in ipairs(res.data) do
+if srv.id ~= game.JobId and srv.playing < srv.maxPlayers then
+pcall(function()
+TeleportService:TeleportToPlaceInstance(game.PlaceId, srv.id, LP)
+end)
+return
+end
+end
+end
+Notify("Server", "Không tìm thấy server trống", "warning")
+end)
+end
+​getgenv().ChuppyServer = ServerManager
+​-- ═══════════════════════════════════════════════════════════════════════════════
+-- [2.10] INIT, CLEANUP & FINAL EXPORTS
+-- ═══════════════════════════════════════════════════════════════════════════════
+​PlayerUtils.UpdateData()
+​SafeSpawn(function()
+while State.Running do
+task.wait(1)
+pcall(PlayerUtils.UpdateData)
+end
+end)
+​Track(game:BindToClose(function()
+pcall(Config.Save)
+pcall(Stats.Save)
+end))
+​-- Full Lifecycle Cleanup Function
+local function Unload()
+State.Running  = false
+State.Unloaded = true
+​for _, conn in ipairs(State._connections) do
+if conn and conn.Connected then
+pcall(function() conn:Disconnect() end)
+end
+end
+​table.clear(State._connections)
+table.clear(State._threads)
+print("[Chuppy Hub V2] Module Core đã dọn dẹp và Unload an toàn.")
+end
+​-- Export Master Object
+getgenv().Chuppy = {
+State        = State,
+Constant     = Constant,
+Config       = Config,
+Stats        = Stats,
+Remote       = Remote,
+Monster      = Monster,
+Webhook      = Webhook,
+Keybind      = KeybindManager,
+Server       = ServerManager,
+Player       = PlayerUtils,
+Track        = Track,
+SafeSpawn    = SafeSpawn,
+Notify       = Notify,
+CheckCooldown= CheckCooldown,
+Unload       = Unload,
+}
+​print("[Chuppy Hub V2] Part 2/10: Core System đã được khởi tạo hoàn chỉnh!")
