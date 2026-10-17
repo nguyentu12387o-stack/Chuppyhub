@@ -1,0 +1,2866 @@
+--[[
+================================================================================
+  🌊 BLOX FRUITS MASTER HUB - VERSION 1.1 (FIXED)
+  Tác giả: LuaMaster AI
+  Hỗ trợ: Sea 1, Sea 2, Sea 3 | Race V1-V4 | Draco | All Boss | Raids | Leviathan
+  
+  ✅ FIXED: Track, LP alias, AutoCDK init, name typo, Quest world=1,
+            FindMonster fallback, World detection, HopIfNotFound UI, Misc.Noclip
+================================================================================
+--]]
+
+-- ============================================================================
+-- 🎯 PHẦN 1: CORE SYSTEM, UI LIBRARY, HELPERS, WORLD DETECTION
+-- ============================================================================
+
+-- 📦 Services (cache)
+local Players             = game:GetService("Players")
+local ReplicatedStorage   = game:GetService("ReplicatedStorage")
+local RunService          = game:GetService("RunService")
+local TweenService        = game:GetService("TweenService")
+local UserInputService    = game:GetService("UserInputService")
+local VirtualUser         = game:GetService("VirtualUser")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local HttpService         = game:GetService("HttpService")
+local TeleportService     = game:GetService("TeleportService")
+local CoreGui             = game:GetService("CoreGui")
+local CollectionService   = game:GetService("CollectionService")
+local Lighting            = game:GetService("Lighting")
+local StarterGui          = game:GetService("StarterGui")
+
+-- 👤 Aliases (FIX BUG #2: thiếu LP alias)
+local LocalPlayer = Players.LocalPlayer
+local LP          = LocalPlayer
+local Camera      = workspace.CurrentCamera
+local Mouse       = LocalPlayer:GetMouse()
+
+-- 🔗 Connection tracker (FIX BUG #1: Track() chưa định nghĩa)
+local _connections = {}
+local function Track(conn)
+    table.insert(_connections, conn)
+    return conn
+end
+
+-- 🛡️ Anti-AFK
+Track(LP.Idled:Connect(function()
+    pcall(function()
+        VirtualUser:Button2Down(Vector2.new(0, 0), Camera.CFrame)
+        task.wait(1)
+        VirtualUser:Button2Up(Vector2.new(0, 0), Camera.CFrame)
+    end)
+end))
+
+-- 🌍 World detection (FIX BUG #6: match cả PlaceId phụ)
+local PlaceId      = game.PlaceId
+local World1 = (PlaceId == 2753915549)  or (PlaceId == 85211729168715)
+local World2 = (PlaceId == 4442272183)  or (PlaceId == 79091703265657)
+local World3 = (PlaceId == 7449423635)  or (PlaceId == 100117331123089)
+local CurrentWorld = World1 and 1 or (World2 and 2 or (World3 and 3 or 0))
+
+-- 📊 Global state
+local Settings      = {}
+local TweenManager  = { currentTween = nil }
+local QuestData     = {}
+local FarmState     = {
+    IsFarming = false, CurrentTarget = nil, CurrentQuest = nil,
+    WeaponSelected = "Melee", FarmMode = "Quest",
+}
+
+-- 🔧 Helpers
+local function GetCharacter()
+    local char = LP.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then return char end
+    return nil
+end
+local function GetHRP()
+    local char = GetCharacter()
+    return char and char:FindFirstChild("HumanoidRootPart")
+end
+local function GetHumanoid()
+    local char = GetCharacter()
+    return char and char:FindFirstChildOfClass("Humanoid")
+end
+local function IsAlive()
+    local hum = GetHumanoid()
+    return hum and hum.Health > 0
+end
+local function GetLevel()
+    local data = LP:FindFirstChild("Data")
+    return data and data:FindFirstChild("Level") and data.Level.Value or 0
+end
+local function GetBeli()
+    local data = LP:FindFirstChild("Data")
+    return data and data:FindFirstChild("Beli") and data.Beli.Value or 0
+end
+local function GetFragments()
+    local data = LP:FindFirstChild("Data")
+    return data and data:FindFirstChild("Fragments") and data.Fragments.Value or 0
+end
+local function GetCommF()
+    local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+    return remotes and remotes:FindFirstChild("CommF_")
+end
+local function InvokeServer(...)
+    local commF = GetCommF()
+    if not commF then return nil end
+    local ok, res = pcall(function() return commF:InvokeServer(...) end)
+    if not ok then
+        warn("[MasterHub] InvokeServer error:", res)
+    end
+    return ok and res or nil
+end
+
+-- ============================================================================
+-- 🎨 UI LIBRARY
+-- ============================================================================
+
+local UILibrary = {}
+UILibrary.__index = UILibrary
+
+local function CreateScreenGui()
+    local sg = Instance.new("ScreenGui")
+    sg.Name = "MasterHub_" .. math.random(1000, 9999)
+    sg.ResetOnSpawn = false
+    sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    pcall(function() sg.Parent = CoreGui end)
+    if not sg.Parent then sg.Parent = LP:WaitForChild("PlayerGui") end
+    return sg
+end
+
+function UILibrary:CreateWindow(config)
+    local self = setmetatable({}, UILibrary)
+    self.config   = config or {}
+    self.title    = self.config.Title or "Master Hub"
+    self.subtitle = self.config.SubTitle or "By LuaMaster"
+    self.tabs = {}
+    self.currentTab = nil
+    self.screenGui = CreateScreenGui()
+
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Size = UDim2.new(0, 600, 0, 450)
+    mainFrame.Position = UDim2.new(0.5, -300, 0.5, -225)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Parent = self.screenGui
+    Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 10)
+
+    local stroke = Instance.new("UIStroke", mainFrame)
+    stroke.Color = Color3.fromRGB(80, 120, 200)
+    stroke.Thickness = 2
+
+    local titleBar = Instance.new("Frame")
+    titleBar.Size = UDim2.new(1, 0, 0, 40)
+    titleBar.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+    titleBar.BorderSizePixel = 0
+    titleBar.Parent = mainFrame
+    Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 10)
+
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, -40, 1, 0)
+    titleLabel.Position = UDim2.new(0, 15, 0, 0)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = self.title .. " | " .. self.subtitle
+    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleLabel.TextSize = 16
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.Parent = titleBar
+
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 30, 0, 30)
+    closeBtn.Position = UDim2.new(1, -35, 0, 5)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+    closeBtn.Text = "X"
+    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeBtn.TextSize = 14
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.Parent = titleBar
+    Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
+
+    closeBtn.MouseButton1Click:Connect(function()
+        mainFrame.Visible = false
+    end)
+
+    -- Draggable
+    local dragging, dragInput, dragStart, startPos
+    titleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+           or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = mainFrame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+    titleBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement
+           or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            mainFrame.Position = UDim2.new(
+                startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+
+    local tabContainer = Instance.new("ScrollingFrame")
+    tabContainer.Size = UDim2.new(0, 150, 1, -50)
+    tabContainer.Position = UDim2.new(0, 5, 0, 45)
+    tabContainer.BackgroundTransparency = 1
+    tabContainer.BorderSizePixel = 0
+    tabContainer.ScrollBarThickness = 2
+    tabContainer.Parent = mainFrame
+
+    local tabLayout = Instance.new("UIListLayout", tabContainer)
+    tabLayout.Padding = UDim.new(0, 3)
+
+    local contentArea = Instance.new("Frame")
+    contentArea.Size = UDim2.new(1, -165, 1, -50)
+    contentArea.Position = UDim2.new(0, 160, 0, 45)
+    contentArea.BackgroundTransparency = 1
+    contentArea.Parent = mainFrame
+
+    self.mainFrame    = mainFrame
+    self.tabContainer = tabContainer
+    self.contentArea  = contentArea
+
+    function self:MakeTab(tabConfig)
+        local tabName = tabConfig[1] or "Tab"
+        local tabBtn = Instance.new("TextButton")
+        tabBtn.Size = UDim2.new(1, -10, 0, 32)
+        tabBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+        tabBtn.Text = "  " .. tabName
+        tabBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+        tabBtn.TextSize = 13
+        tabBtn.Font = Enum.Font.GothamSemibold
+        tabBtn.TextXAlignment = Enum.TextXAlignment.Left
+        tabBtn.Parent = tabContainer
+        Instance.new("UICorner", tabBtn).CornerRadius = UDim.new(0, 6)
+
+        local tabContent = Instance.new("ScrollingFrame")
+        tabContent.Size = UDim2.new(1, 0, 1, 0)
+        tabContent.BackgroundTransparency = 1
+        tabContent.BorderSizePixel = 0
+        tabContent.ScrollBarThickness = 3
+        tabContent.Visible = false
+        tabContent.Parent = contentArea
+
+        local contentLayout = Instance.new("UIListLayout", tabContent)
+        contentLayout.Padding = UDim.new(0, 5)
+        contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+        local contentPadding = Instance.new("UIPadding", tabContent)
+        contentPadding.PaddingTop   = UDim.new(0, 5)
+        contentPadding.PaddingLeft  = UDim.new(0, 5)
+        contentPadding.PaddingRight = UDim.new(0, 5)
+
+        contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            tabContent.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 10)
+        end)
+
+        local tab = { name = tabName, button = tabBtn, content = tabContent }
+
+        tabBtn.MouseButton1Click:Connect(function()
+            for _, t in pairs(self.tabs) do
+                t.content.Visible = false
+                t.button.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+            end
+            tabContent.Visible = true
+            tabBtn.BackgroundColor3 = Color3.fromRGB(80, 120, 200)
+            self.currentTab = tab
+        end)
+
+        function tab:AddSection(sectionConfig)
+            local sectionName = sectionConfig[1] or "Section"
+            local section = {}
+
+            local header = Instance.new("Frame")
+            header.Size = UDim2.new(1, 0, 0, 30)
+            header.BackgroundTransparency = 1
+            header.Parent = tabContent
+
+            local lbl = Instance.new("TextLabel")
+            lbl.Size = UDim2.new(1, 0, 1, 0)
+            lbl.BackgroundTransparency = 1
+            lbl.Text = "📂 " .. sectionName
+            lbl.TextColor3 = Color3.fromRGB(100, 180, 255)
+            lbl.TextSize = 14
+            lbl.Font = Enum.Font.GothamBold
+            lbl.TextXAlignment = Enum.TextXAlignment.Left
+            lbl.Parent = header
+
+            local function createElement(h)
+                local f = Instance.new("Frame")
+                f.Size = UDim2.new(1, 0, 0, h)
+                f.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+                f.BorderSizePixel = 0
+                f.Parent = tabContent
+                Instance.new("UICorner", f).CornerRadius = UDim.new(0, 6)
+                return f
+            end
+
+            function section:AddToggle(cfg)
+                local name = cfg.Name or "Toggle"
+                local val  = cfg.Default or false
+                local cb   = cfg.Callback or function() end
+
+                local frame = createElement(35)
+                local lbl = Instance.new("TextLabel")
+                lbl.Size = UDim2.new(1, -60, 1, 0)
+                lbl.Position = UDim2.new(0, 10, 0, 0)
+                lbl.BackgroundTransparency = 1
+                lbl.Text = name
+                lbl.TextColor3 = Color3.fromRGB(220, 220, 220)
+                lbl.TextSize = 13
+                lbl.Font = Enum.Font.Gotham
+                lbl.TextXAlignment = Enum.TextXAlignment.Left
+                lbl.Parent = frame
+
+                local btn = Instance.new("TextButton")
+                btn.Size = UDim2.new(0, 50, 0, 24)
+                btn.Position = UDim2.new(1, -55, 0.5, -12)
+                btn.BackgroundColor3 = val and Color3.fromRGB(80, 200, 80) or Color3.fromRGB(100, 100, 100)
+                btn.Text = val and "ON" or "OFF"
+                btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+                btn.TextSize = 12
+                btn.Font = Enum.Font.GothamBold
+                btn.Parent = frame
+                Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+
+                btn.MouseButton1Click:Connect(function()
+                    val = not val
+                    btn.BackgroundColor3 = val and Color3.fromRGB(80, 200, 80) or Color3.fromRGB(100, 100, 100)
+                    btn.Text = val and "ON" or "OFF"
+                    pcall(cb, val)
+                end)
+
+                return { Set = function(_, v)
+                    val = v
+                    btn.BackgroundColor3 = val and Color3.fromRGB(80, 200, 80) or Color3.fromRGB(100, 100, 100)
+                    btn.Text = val and "ON" or "OFF"
+                end }
+            end
+
+            function section:AddButton(cfg)
+                local name = cfg.Name or "Button"
+                local cb   = cfg.Callback or function() end
+                local frame = createElement(35)
+                local btn = Instance.new("TextButton")
+                btn.Size = UDim2.new(1, -20, 0, 28)
+                btn.Position = UDim2.new(0, 10, 0.5, -14)
+                btn.BackgroundColor3 = Color3.fromRGB(60, 100, 180)
+                btn.Text = name
+                btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+                btn.TextSize = 13
+                btn.Font = Enum.Font.GothamBold
+                btn.Parent = frame
+                Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+                btn.MouseButton1Click:Connect(function() pcall(cb) end)
+            end
+
+            function section:AddDropdown(cfg)
+                local name     = cfg.Name or "Dropdown"
+                local options  = cfg.Options or {}
+                local selected = cfg.Default or options[1]
+                local cb       = cfg.Callback or function() end
+                local isOpen   = false
+
+                local frame = createElement(42)
+                frame.AutomaticSize = Enum.AutomaticSize.Y
+
+                local lbl = Instance.new("TextLabel")
+                lbl.Size = UDim2.new(1, -10, 0, 20)
+                lbl.Position = UDim2.new(0, 10, 0, 2)
+                lbl.BackgroundTransparency = 1
+                lbl.Text = name
+                lbl.TextColor3 = Color3.fromRGB(180, 180, 180)
+                lbl.TextSize = 11
+                lbl.Font = Enum.Font.Gotham
+                lbl.TextXAlignment = Enum.TextXAlignment.Left
+                lbl.Parent = frame
+
+                local btn = Instance.new("TextButton")
+                btn.Size = UDim2.new(1, -20, 0, 22)
+                btn.Position = UDim2.new(0, 10, 0, 20)
+                btn.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+                btn.Text = "  " .. tostring(selected) .. " ▼"
+                btn.TextColor3 = Color3.fromRGB(220, 220, 220)
+                btn.TextSize = 12
+                btn.Font = Enum.Font.Gotham
+                btn.TextXAlignment = Enum.TextXAlignment.Left
+                btn.Parent = frame
+                Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+
+                local optionsFrame = Instance.new("Frame")
+                optionsFrame.Size = UDim2.new(1, -20, 0, 0)
+                optionsFrame.Position = UDim2.new(0, 10, 0, 44)
+                optionsFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
+                optionsFrame.Visible = false
+                optionsFrame.ClipsDescendants = true
+                optionsFrame.Parent = frame
+                Instance.new("UICorner", optionsFrame).CornerRadius = UDim.new(0, 4)
+
+                local optList = Instance.new("UIListLayout", optionsFrame)
+
+                for _, opt in ipairs(options) do
+                    local optBtn = Instance.new("TextButton")
+                    optBtn.Size = UDim2.new(1, 0, 0, 24)
+                    optBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+                    optBtn.Text = "  " .. tostring(opt)
+                    optBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+                    optBtn.TextSize = 12
+                    optBtn.Font = Enum.Font.Gotham
+                    optBtn.TextXAlignment = Enum.TextXAlignment.Left
+                    optBtn.Parent = optionsFrame
+                    optBtn.MouseButton1Click:Connect(function()
+                        selected = opt
+                        btn.Text = "  " .. tostring(opt) .. " ▼"
+                        optionsFrame.Visible = false
+                        isOpen = false
+                        pcall(cb, opt)
+                    end)
+                end
+
+                optList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+                    optionsFrame.Size = UDim2.new(1, -20, 0, math.min(optList.AbsoluteContentSize.Y, 150))
+                end)
+
+                btn.MouseButton1Click:Connect(function()
+                    isOpen = not isOpen
+                    optionsFrame.Visible = isOpen
+                end)
+            end
+
+            function section:AddSlider(cfg)
+                local name  = cfg.Name or "Slider"
+                local min   = cfg.Min or 0
+                local max   = cfg.Max or 100
+                local value = cfg.Default or min
+                local cb    = cfg.Callback or function() end
+
+                local frame = createElement(50)
+                local lbl = Instance.new("TextLabel")
+                lbl.Size = UDim2.new(1, -60, 0, 18)
+                lbl.Position = UDim2.new(0, 10, 0, 3)
+                lbl.BackgroundTransparency = 1
+                lbl.Text = name .. ": " .. value
+                lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+                lbl.TextSize = 12
+                lbl.Font = Enum.Font.Gotham
+                lbl.TextXAlignment = Enum.TextXAlignment.Left
+                lbl.Parent = frame
+
+                local bg = Instance.new("Frame")
+                bg.Size = UDim2.new(1, -20, 0, 10)
+                bg.Position = UDim2.new(0, 10, 0, 28)
+                bg.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+                bg.Parent = frame
+                Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 5)
+
+                local fill = Instance.new("Frame")
+                fill.Size = UDim2.new((value - min) / (max - min), 0, 1, 0)
+                fill.BackgroundColor3 = Color3.fromRGB(80, 150, 255)
+                fill.Parent = bg
+                Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 5)
+
+                local dragging = false
+                bg.InputBegan:Connect(function(i)
+                    if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end
+                end)
+                UserInputService.InputEnded:Connect(function(i)
+                    if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+                end)
+                UserInputService.InputChanged:Connect(function(i)
+                    if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
+                        local rel = math.clamp((i.Position.X - bg.AbsolutePosition.X) / bg.AbsoluteSize.X, 0, 1)
+                        value = math.floor(min + (max - min) * rel)
+                        fill.Size = UDim2.new(rel, 0, 1, 0)
+                        lbl.Text = name .. ": " .. value
+                        pcall(cb, value)
+                    end
+                end)
+            end
+
+            return section
+        end
+
+        table.insert(self.tabs, tab)
+        if #self.tabs == 1 then
+            tabBtn.BackgroundColor3 = Color3.fromRGB(80, 120, 200)
+            tabContent.Visible = true
+            self.currentTab = tab
+        end
+        return tab
+    end
+
+    return self
+end
+
+-- ============================================================================
+-- 🗺️ QUEST DATABASE (FIX BUG #5: thêm world=1 cho TOÀN BỘ Sea 1)
+-- ============================================================================
+
+local QuestDatabase = {
+    -- WORLD 1 (mọi entry đều có world = 1)
+    { minLevel=1,   maxLevel=9,   mon="Bandit",              quest="BanditQuest1",   level=1, world=1,
+      questCF=CFrame.new(1059.37, 15.44, 1550.42), monCF=CFrame.new(1045.96, 27.00, 1560.82) },
+    { minLevel=10,  maxLevel=14,  mon="Monkey",              quest="JungleQuest",    level=1, world=1,
+      questCF=CFrame.new(-1598.08, 35.55, 153.37), monCF=CFrame.new(-1448.51, 67.85, 11.46) },
+    { minLevel=15,  maxLevel=29,  mon="Gorilla",             quest="JungleQuest",    level=2, world=1,
+      questCF=CFrame.new(-1598.08, 35.55, 153.37), monCF=CFrame.new(-1129.88, 40.46, -525.42) },
+    { minLevel=30,  maxLevel=39,  mon="Pirate",              quest="BuggyQuest1",    level=1, world=1,
+      questCF=CFrame.new(-1141.07, 4.10, 3831.54), monCF=CFrame.new(-1103.51, 13.75, 3896.09) },
+    { minLevel=40,  maxLevel=59,  mon="Brute",               quest="BuggyQuest1",    level=2, world=1,
+      questCF=CFrame.new(-1141.07, 4.10, 3831.54), monCF=CFrame.new(-1140.08, 14.80, 4322.92) },
+    { minLevel=60,  maxLevel=74,  mon="Desert Bandit",       quest="DesertQuest",    level=1, world=1,
+      questCF=CFrame.new(894.48, 5.14, 4392.43), monCF=CFrame.new(924.79, 6.44, 4481.58) },
+    { minLevel=75,  maxLevel=89,  mon="Desert Officer",      quest="DesertQuest",    level=2, world=1,
+      questCF=CFrame.new(894.48, 5.14, 4392.43), monCF=CFrame.new(1608.28, 8.61, 4371.00) },
+    { minLevel=90,  maxLevel=99,  mon="Snow Bandit",         quest="SnowQuest",      level=1, world=1,
+      questCF=CFrame.new(1389.74, 88.15, -1298.90), monCF=CFrame.new(1354.34, 87.27, -1393.94) },
+    { minLevel=100, maxLevel=119, mon="Snowman",             quest="SnowQuest",      level=2, world=1,
+      questCF=CFrame.new(1389.74, 88.15, -1298.90), monCF=CFrame.new(1201.64, 144.57, -1550.06) },
+    { minLevel=120, maxLevel=149, mon="Chief Petty Officer", quest="MarineQuest2",   level=1, world=1,
+      questCF=CFrame.new(-5039.58, 27.35, 4324.68), monCF=CFrame.new(-4881.23, 22.65, 4273.75) },
+    { minLevel=150, maxLevel=174, mon="Sky Bandit",          quest="SkyQuest",       level=1, world=1,
+      questCF=CFrame.new(-4839.53, 716.36, -2619.44), monCF=CFrame.new(-4953.20, 295.74, -2899.22) },
+    { minLevel=175, maxLevel=189, mon="Dark Master",         quest="SkyQuest",       level=2, world=1,
+      questCF=CFrame.new(-4839.53, 716.36, -2619.44), monCF=CFrame.new(-5259.84, 391.39, -2229.03) },
+    { minLevel=190, maxLevel=209, mon="Prisoner",            quest="PrisonerQuest",  level=1, world=1,
+      questCF=CFrame.new(5308.93, 1.65, 475.12), monCF=CFrame.new(5098.97, -0.32, 474.23) },
+    { minLevel=210, maxLevel=249, mon="Dangerous Prisoner",  quest="PrisonerQuest",  level=2, world=1,
+      questCF=CFrame.new(5308.93, 1.65, 475.12), monCF=CFrame.new(5654.56, 15.63, 866.29) },
+    { minLevel=250, maxLevel=274, mon="Toga Warrior",        quest="ColosseumQuest", level=1, world=1,
+      questCF=CFrame.new(-1580.04, 6.35, -2986.47), monCF=CFrame.new(-1820.21, 51.68, -2740.66) },
+    { minLevel=275, maxLevel=299, mon="Gladiator",           quest="ColosseumQuest", level=2, world=1,
+      questCF=CFrame.new(-1580.04, 6.35, -2986.47), monCF=CFrame.new(-1292.83, 56.38, -3339.03) },
+    { minLevel=300, maxLevel=324, mon="Military Soldier",    quest="MagmaQuest",     level=1, world=1,
+      questCF=CFrame.new(-5313.37, 10.95, 8515.29), monCF=CFrame.new(-5411.16, 11.08, 8454.29) },
+    { minLevel=325, maxLevel=374, mon="Military Spy",        quest="MagmaQuest",     level=2, world=1,
+      questCF=CFrame.new(-5313.37, 10.95, 8515.29), monCF=CFrame.new(-5802.86, 86.26, 8828.85) },
+    { minLevel=375, maxLevel=399, mon="Fishman Warrior",     quest="FishmanQuest",   level=1, world=1,
+      questCF=CFrame.new(61122.65, 18.49, 1569.39), monCF=CFrame.new(60878.30, 18.48, 1543.75) },
+    { minLevel=400, maxLevel=449, mon="Fishman Commando",    quest="FishmanQuest",   level=2, world=1,
+      questCF=CFrame.new(61122.65, 18.49, 1569.39), monCF=CFrame.new(61922.63, 18.48, 1493.93) },
+    { minLevel=450, maxLevel=474, mon="God's Guard",         quest="SkyExp1Quest",   level=1, world=1,
+      questCF=CFrame.new(-4721.88, 843.87, -1949.96), monCF=CFrame.new(-4710.04, 845.27, -1927.30) },
+    { minLevel=475, maxLevel=524, mon="Shanda",              quest="SkyExp1Quest",   level=2, world=1,
+      questCF=CFrame.new(-7859.09, 5544.19, -381.47), monCF=CFrame.new(-7678.48, 5566.40, -497.21) },
+    { minLevel=525, maxLevel=549, mon="Royal Squad",         quest="SkyExp2Quest",   level=1, world=1,
+      questCF=CFrame.new(-7906.81, 5634.66, -1411.99), monCF=CFrame.new(-7624.25, 5658.13, -1467.35) },
+    { minLevel=550, maxLevel=624, mon="Royal Soldier",       quest="SkyExp2Quest",   level=2, world=1,
+      questCF=CFrame.new(-7906.81, 5634.66, -1411.99), monCF=CFrame.new(-7836.75, 5645.66, -1790.62) },
+    { minLevel=625, maxLevel=649, mon="Galley Pirate",       quest="FountainQuest",  level=1, world=1,
+      questCF=CFrame.new(5259.81, 37.35, 4050.02), monCF=CFrame.new(5551.02, 78.90, 3930.41) },
+    { minLevel=650, maxLevel=699, mon="Galley Captain",      quest="FountainQuest",  level=2, world=1,
+      questCF=CFrame.new(5259.81, 37.35, 4050.02), monCF=CFrame.new(5441.95, 42.50, 4950.09) },
+
+    -- WORLD 2 (giữ world = 2)
+    { minLevel=700,  maxLevel=724,  mon="Raider",             quest="Area1Quest",         level=1, world=2,
+      questCF=CFrame.new(-429.54, 71.76, 1836.18), monCF=CFrame.new(-728.32, 52.77, 2345.77) },
+    { minLevel=725,  maxLevel=774,  mon="Mercenary",          quest="Area1Quest",         level=2, world=2,
+      questCF=CFrame.new(-429.54, 71.76, 1836.18), monCF=CFrame.new(-1004.32, 80.15, 1424.61) },
+    { minLevel=775,  maxLevel=799,  mon="Swan Pirate",        quest="Area2Quest",         level=1, world=2,
+      questCF=CFrame.new(638.43, 71.76, 918.28), monCF=CFrame.new(1068.66, 137.61, 1322.10) },
+    { minLevel=800,  maxLevel=874,  mon="Factory Staff",      quest="Area2Quest",         level=2, world=2,
+      questCF=CFrame.new(632.69, 73.10, 918.66), monCF=CFrame.new(73.07, 81.86, -27.47) },
+    { minLevel=875,  maxLevel=899,  mon="Marine Lieutenant",  quest="MarineQuest3",       level=1, world=2,
+      questCF=CFrame.new(-2440.79, 71.71, -3216.06), monCF=CFrame.new(-2821.37, 75.89, -3070.08) },
+    { minLevel=900,  maxLevel=949,  mon="Marine Captain",     quest="MarineQuest3",       level=2, world=2,
+      questCF=CFrame.new(-2440.79, 71.71, -3216.06), monCF=CFrame.new(-1861.23, 80.17, -3254.69) },
+    { minLevel=950,  maxLevel=974,  mon="Zombie",             quest="ZombieQuest",        level=1, world=2,
+      questCF=CFrame.new(-5497.06, 47.59, -795.23), monCF=CFrame.new(-5657.77, 78.96, -928.68) },
+    { minLevel=975,  maxLevel=999,  mon="Vampire",            quest="ZombieQuest",        level=2, world=2,
+      questCF=CFrame.new(-5497.06, 47.59, -795.23), monCF=CFrame.new(-6037.66, 32.18, -1340.65) },
+    { minLevel=1000, maxLevel=1049, mon="Snow Trooper",       quest="SnowMountainQuest",  level=1, world=2,
+      questCF=CFrame.new(609.85, 400.11, -5372.25), monCF=CFrame.new(549.14, 427.38, -5563.69) },
+    { minLevel=1050, maxLevel=1099, mon="Winter Warrior",     quest="SnowMountainQuest",  level=2, world=2,
+      questCF=CFrame.new(609.85, 400.11, -5372.25), monCF=CFrame.new(1142.74, 475.63, -5199.41) },
+    { minLevel=1100, maxLevel=1124, mon="Lab Subordinate",    quest="IceSideQuest",       level=1, world=2,
+      questCF=CFrame.new(-6064.06, 15.24, -4902.97), monCF=CFrame.new(-5707.47, 15.95, -4513.39) },
+    { minLevel=1125, maxLevel=1174, mon="Horned Warrior",     quest="IceSideQuest",       level=2, world=2,
+      questCF=CFrame.new(-6064.06, 15.24, -4902.97), monCF=CFrame.new(-6341.36, 15.95, -5723.16) },
+    { minLevel=1175, maxLevel=1199, mon="Magma Ninja",        quest="FireSideQuest",      level=1, world=2,
+      questCF=CFrame.new(-5428.03, 15.06, -5299.43), monCF=CFrame.new(-5449.67, 76.65, -5808.20) },
+    { minLevel=1200, maxLevel=1249, mon="Lava Pirate",        quest="FireSideQuest",      level=2, world=2,
+      questCF=CFrame.new(-5428.03, 15.06, -5299.43), monCF=CFrame.new(-5213.33, 49.73, -4701.45) },
+    { minLevel=1250, maxLevel=1274, mon="Ship Deckhand",      quest="ShipQuest1",         level=1, world=2,
+      questCF=CFrame.new(1037.80, 125.09, 32911.60), monCF=CFrame.new(1212.01, 150.79, 33059.24) },
+    { minLevel=1275, maxLevel=1299, mon="Ship Engineer",      quest="ShipQuest1",         level=2, world=2,
+      questCF=CFrame.new(1037.80, 125.09, 32911.60), monCF=CFrame.new(919.47, 43.54, 32779.96) },
+    { minLevel=1300, maxLevel=1324, mon="Ship Steward",       quest="ShipQuest2",         level=1, world=2,
+      questCF=CFrame.new(968.80, 125.09, 33244.12), monCF=CFrame.new(919.43, 129.55, 33436.03) },
+    { minLevel=1325, maxLevel=1349, mon="Ship Officer",       quest="ShipQuest2",         level=2, world=2,
+      questCF=CFrame.new(968.80, 125.09, 33244.12), monCF=CFrame.new(1036.01, 181.43, 33315.72) },
+    { minLevel=1350, maxLevel=1374, mon="Arctic Warrior",     quest="FrostQuest",         level=1, world=2,
+      questCF=CFrame.new(5667.65, 26.79, -6486.08), monCF=CFrame.new(5966.24, 62.97, -6179.38) },
+    { minLevel=1375, maxLevel=1424, mon="Snow Lurker",        quest="FrostQuest",         level=2, world=2,
+      questCF=CFrame.new(5667.65, 26.79, -6486.08), monCF=CFrame.new(5407.07, 69.19, -6880.88) },
+    { minLevel=1425, maxLevel=1449, mon="Sea Soldier",        quest="ForgottenQuest",     level=1, world=2,
+      questCF=CFrame.new(-3054.44, 235.54, -10142.81), monCF=CFrame.new(-3028.22, 64.67, -9775.42) },
+    { minLevel=1450, maxLevel=1499, mon="Water Fighter",      quest="ForgottenQuest",     level=2, world=2,
+      questCF=CFrame.new(-3054.44, 235.54, -10142.81), monCF=CFrame.new(-3352.90, 285.01, -10534.84) },
+
+    -- WORLD 3 (giữ world = 3)
+    { minLevel=1500, maxLevel=1524, mon="Pirate Millionaire",    quest="PiratePortQuest",     level=1, world=3,
+      questCF=CFrame.new(-290.07, 42.90, 5581.58), monCF=CFrame.new(-245.99, 47.30, 5584.10) },
+    { minLevel=1525, maxLevel=1574, mon="Pistol Billionaire",    quest="PiratePortQuest",     level=2, world=3,
+      questCF=CFrame.new(-290.07, 42.90, 5581.58), monCF=CFrame.new(-187.33, 86.23, 6013.51) },
+    { minLevel=1575, maxLevel=1599, mon="Dragon Crew Warrior",   quest="AmazonQuest",         level=1, world=3,
+      questCF=CFrame.new(5832.83, 51.68, -1101.51), monCF=CFrame.new(6141.14, 51.35, -1340.73) },
+    { minLevel=1600, maxLevel=1624, mon="Dragon Crew Archer",    quest="AmazonQuest",         level=2, world=3,
+      questCF=CFrame.new(5833.11, 51.60, -1103.06), monCF=CFrame.new(6616.41, 441.76, 446.04) },
+    { minLevel=1625, maxLevel=1649, mon="Female Islander",       quest="AmazonQuest2",        level=1, world=3,
+      questCF=CFrame.new(5446.87, 601.62, 749.45), monCF=CFrame.new(4685.25, 735.80, 815.34) },
+    { minLevel=1650, maxLevel=1699, mon="Giant Islander",        quest="AmazonQuest2",        level=2, world=3,
+      questCF=CFrame.new(5446.87, 601.62, 749.45), monCF=CFrame.new(4729.09, 590.43, -36.97) },
+    { minLevel=1700, maxLevel=1724, mon="Marine Commodore",      quest="MarineTreeIsland",    level=1, world=3,
+      questCF=CFrame.new(2180.54, 27.81, -6741.54), monCF=CFrame.new(2286.00, 73.13, -7159.80) },
+    { minLevel=1725, maxLevel=1774, mon="Marine Rear Admiral",   quest="MarineTreeIsland",    level=2, world=3,
+      questCF=CFrame.new(2179.98, 28.73, -6740.05), monCF=CFrame.new(3656.77, 160.52, -7001.59) },
+    { minLevel=1775, maxLevel=1799, mon="Fishman Raider",        quest="DeepForestIsland3",   level=1, world=3,
+      questCF=CFrame.new(-10581.65, 330.87, -8761.18), monCF=CFrame.new(-10407.52, 331.76, -8368.51) },
+    { minLevel=1800, maxLevel=1824, mon="Fishman Captain",       quest="DeepForestIsland3",   level=2, world=3,
+      questCF=CFrame.new(-10581.65, 330.87, -8761.18), monCF=CFrame.new(-10994.70, 352.38, -9002.11) },
+    { minLevel=1825, maxLevel=1849, mon="Forest Pirate",         quest="DeepForestIsland",    level=1, world=3,
+      questCF=CFrame.new(-13234.04, 331.48, -7625.40), monCF=CFrame.new(-13274.47, 332.37, -7769.58) },
+    { minLevel=1850, maxLevel=1899, mon="Mythological Pirate",   quest="DeepForestIsland",    level=2, world=3,
+      questCF=CFrame.new(-13234.04, 331.48, -7625.40), monCF=CFrame.new(-13680.60, 501.08, -6991.18) },
+    { minLevel=1900, maxLevel=1924, mon="Jungle Pirate",         quest="DeepForestIsland2",   level=1, world=3,
+      questCF=CFrame.new(-12680.38, 389.97, -9902.01), monCF=CFrame.new(-12256.16, 331.73, -10485.83) },
+    { minLevel=1925, maxLevel=1974, mon="Musketeer Pirate",      quest="DeepForestIsland2",   level=2, world=3,
+      questCF=CFrame.new(-12680.38, 389.97, -9902.01), monCF=CFrame.new(-13457.90, 391.54, -9859.17) },
+    { minLevel=1975, maxLevel=1999, mon="Reborn Skeleton",       quest="HauntedQuest1",       level=1, world=3,
+      questCF=CFrame.new(-9479.21, 141.21, 5566.09), monCF=CFrame.new(-8763.72, 165.72, 6159.86) },
+    { minLevel=2000, maxLevel=2024, mon="Living Zombie",         quest="HauntedQuest1",       level=2, world=3,
+      questCF=CFrame.new(-9479.21, 141.21, 5566.09), monCF=CFrame.new(-10144.13, 138.62, 5838.08) },
+    { minLevel=2025, maxLevel=2049, mon="Demonic Soul",          quest="HauntedQuest2",       level=1, world=3,
+      questCF=CFrame.new(-9516.99, 172.01, 6078.46), monCF=CFrame.new(-9505.87, 172.10, 6158.99) },
+    { minLevel=2050, maxLevel=2074, mon="Posessed Mummy",        quest="HauntedQuest2",       level=2, world=3,
+      questCF=CFrame.new(-9516.99, 172.01, 6078.46), monCF=CFrame.new(-9582.02, 6.25, 6205.47) },
+    { minLevel=2075, maxLevel=2099, mon="Peanut Scout",          quest="NutsIslandQuest",     level=1, world=3,
+      questCF=CFrame.new(-2104.39, 38.10, -10194.21), monCF=CFrame.new(-2143.24, 47.72, -10029.99) },
+    { minLevel=2100, maxLevel=2124, mon="Peanut President",      quest="NutsIslandQuest",     level=2, world=3,
+      questCF=CFrame.new(-2104.39, 38.10, -10194.21), monCF=CFrame.new(-1859.35, 38.10, -10422.42) },
+    { minLevel=2125, maxLevel=2149, mon="Ice Cream Chef",        quest="IceCreamIslandQuest", level=1, world=3,
+      questCF=CFrame.new(-820.64, 65.81, -10965.79), monCF=CFrame.new(-872.24, 65.81, -10919.95) },
+    { minLevel=2150, maxLevel=2199, mon="Ice Cream Commander",   quest="IceCreamIslandQuest", level=2, world=3,
+      questCF=CFrame.new(-820.64, 65.81, -10965.79), monCF=CFrame.new(-558.06, 112.04, -11290.77) },
+    { minLevel=2200, maxLevel=2224, mon="Cookie Crafter",        quest="CakeQuest1",          level=1, world=3,
+      questCF=CFrame.new(-2021.32, 37.79, -12028.72), monCF=CFrame.new(-2374.13, 37.79, -12125.30) },
+    { minLevel=2225, maxLevel=2249, mon="Cake Guard",            quest="CakeQuest1",          level=2, world=3,
+      questCF=CFrame.new(-2021.32, 37.79, -12028.72), monCF=CFrame.new(-1598.30, 43.77, -12244.58) },
+    { minLevel=2250, maxLevel=2274, mon="Baking Staff",          quest="CakeQuest2",          level=1, world=3,
+      questCF=CFrame.new(-1927.91, 37.79, -12842.53), monCF=CFrame.new(-1887.80, 77.61, -12998.35) },
+    { minLevel=2275, maxLevel=2299, mon="Head Baker",            quest="CakeQuest2",          level=2, world=3,
+      questCF=CFrame.new(-1927.91, 37.79, -12842.53), monCF=CFrame.new(-2216.18, 82.88, -12869.29) },
+    { minLevel=2300, maxLevel=2324, mon="Cocoa Warrior",         quest="ChocQuest1",          level=1, world=3,
+      questCF=CFrame.new(233.22, 29.87, -12201.23), monCF=CFrame.new(-21.55, 80.57, -12352.38) },
+    { minLevel=2325, maxLevel=2349, mon="Chocolate Bar Battler", quest="ChocQuest1",          level=2, world=3,
+      questCF=CFrame.new(233.22, 29.87, -12201.23), monCF=CFrame.new(582.59, 77.18, -12463.16) },
+    { minLevel=2350, maxLevel=2374, mon="Sweet Thief",           quest="ChocQuest2",          level=1, world=3,
+      questCF=CFrame.new(150.50, 30.69, -12774.50), monCF=CFrame.new(165.18, 76.05, -12600.83) },
+    { minLevel=2375, maxLevel=2399, mon="Candy Rebel",           quest="ChocQuest2",          level=2, world=3,
+      questCF=CFrame.new(150.50, 30.69, -12774.50), monCF=CFrame.new(134.86, 77.24, -12876.54) },
+    { minLevel=2400, maxLevel=2424, mon="Candy Pirate",          quest="CandyQuest1",         level=1, world=3,
+      questCF=CFrame.new(-1150.04, 20.37, -14446.33), monCF=CFrame.new(-1310.50, 26.01, -14562.40) },
+    { minLevel=2425, maxLevel=2449, mon="Snow Demon",            quest="CandyQuest1",         level=2, world=3,
+      questCF=CFrame.new(-1150.04, 20.37, -14446.33), monCF=CFrame.new(-880.20, 71.24, -14538.60) },
+    { minLevel=2450, maxLevel=2474, mon="Isle Outlaw",           quest="TikiQuest1",          level=1, world=3,
+      questCF=CFrame.new(-16547.74, 61.13, -173.41), monCF=CFrame.new(-16442.81, 116.13, -264.46) },
+    { minLevel=2475, maxLevel=2524, mon="Island Boy",            quest="TikiQuest1",          level=2, world=3,
+      questCF=CFrame.new(-16547.74, 61.13, -173.41), monCF=CFrame.new(-16901.26, 84.06, -192.88) },
+    { minLevel=2525, maxLevel=2550, mon="Isle Champion",         quest="TikiQuest2",          level=2, world=3,
+      questCF=CFrame.new(-16539.07, 55.68, 1051.57), monCF=CFrame.new(-16641.67, 235.78, 1031.28) },
+}
+
+local function CheckQuest()
+    local myLevel = GetLevel()
+    for _, data in ipairs(QuestDatabase) do
+        if myLevel >= data.minLevel and myLevel <= data.maxLevel then
+            if data.world == CurrentWorld then
+                QuestData.Mon          = data.mon
+                QuestData.NameQuest    = data.quest
+                QuestData.LevelQuest   = data.level
+                QuestData.NameMon      = data.mon
+                QuestData.CFrameQuest  = data.questCF
+                QuestData.CFrameMon    = data.monCF
+                return data
+            end
+        end
+    end
+    return nil
+end
+
+-- ============================================================================
+-- 🚀 MOVEMENT & COMBAT HELPERS
+-- ============================================================================
+
+local function TweenTo(targetCF, speed)
+    speed = speed or 300
+    local hrp = GetHRP()
+    if not hrp then return end
+    if TweenManager.currentTween then
+        TweenManager.currentTween:Cancel()
+        TweenManager.currentTween = nil
+    end
+    local dist = (hrp.Position - targetCF.Position).Magnitude
+    if dist < 3 then return end
+    local time = dist / speed
+    local tw = TweenService:Create(hrp,
+        TweenInfo.new(time, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut),
+        { CFrame = targetCF })
+    TweenManager.currentTween = tw
+    tw:Play()
+    tw.Completed:Connect(function(s)
+        if s == Enum.PlaybackState.Completed then TweenManager.currentTween = nil end
+    end)
+    return tw
+end
+
+local function StopTween()
+    if TweenManager.currentTween then
+        TweenManager.currentTween:Cancel()
+        TweenManager.currentTween = nil
+    end
+end
+
+local function EquipWeapon(weaponName)
+    if not weaponName then return end
+    local char = GetCharacter()
+    if not char then return end
+    local hum = GetHumanoid()
+    if not hum then return end
+
+    local tool = LP.Backpack:FindFirstChild(weaponName)
+    if tool then
+        pcall(function() hum:EquipTool(tool) end)
+        return true
+    end
+
+    local current = char:FindFirstChildOfClass("Tool")
+    if current and current.Name ~= weaponName then
+        pcall(function() current.Parent = LP.Backpack end)
+        task.wait(0.1)
+        tool = LP.Backpack:FindFirstChild(weaponName)
+        if tool then
+            hum:EquipTool(tool)
+            return true
+        end
+    end
+    return false
+end
+
+local function AutoHaki()
+    local char = GetCharacter()
+    if not char then return end
+    if not char:FindFirstChild("HasBuso") then
+        pcall(function() InvokeServer("Buso") end)
+    end
+end
+
+local function DoAttack()
+    local char = GetCharacter()
+    if not char then return end
+    local tool = char:FindFirstChildOfClass("Tool")
+    if tool then
+        pcall(function() tool:Activate() end)
+    end
+end
+
+-- FIX BUG #7: FindMonster có fallback Workspace gốc
+local function FindMonster(monsterName)
+    -- Ưu tiên Enemies folder
+    local enemies = workspace:FindFirstChild("Enemies")
+    if enemies then
+        for _, v in pairs(enemies:GetChildren()) do
+            if v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid")
+               and v.Humanoid.Health > 0 then
+                if not monsterName
+                   or string.find(string.lower(v.Name), string.lower(monsterName)) then
+                    return v
+                end
+            end
+        end
+    end
+
+    -- Fallback: tìm trong Workspace gốc (mob thường trú Sea 1)
+    if monsterName then
+        for _, v in pairs(workspace:GetChildren()) do
+            if v:IsA("Model")
+               and string.find(string.lower(v.Name), string.lower(monsterName))
+               and v:FindFirstChild("HumanoidRootPart")
+               and v:FindFirstChild("Humanoid")
+               and v.Humanoid.Health > 0 then
+                return v
+            end
+        end
+    end
+
+    -- Fallback cuối: ReplicatedStorage (mob chưa spawn)
+    if monsterName then
+        local rsMob = ReplicatedStorage:FindFirstChild(monsterName)
+        if rsMob and rsMob:FindFirstChild("HumanoidRootPart") then
+            return rsMob
+        end
+    end
+
+    return nil
+end
+
+local function FindNearestMonster(maxDistance)
+    maxDistance = maxDistance or 5000
+    local hrp = GetHRP()
+    if not hrp then return nil end
+    local enemies = workspace:FindFirstChild("Enemies")
+    if not enemies then return nil end
+    local nearest, shortest = nil, maxDistance
+    for _, v in pairs(enemies:GetChildren()) do
+        if v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid")
+           and v.Humanoid.Health > 0 then
+            local d = (v.HumanoidRootPart.Position - hrp.Position).Magnitude
+            if d < shortest then
+                shortest = d
+                nearest = v
+            end
+        end
+    end
+    return nearest
+end
+
+local NoclipConnection = nil
+local function EnableNoclip(enable)
+    if enable then
+        if NoclipConnection then NoclipConnection:Disconnect() end
+        NoclipConnection = RunService.Stepped:Connect(function()
+            local char = GetCharacter()
+            if char then
+                for _, p in pairs(char:GetDescendants()) do
+                    if p:IsA("BasePart") then p.CanCollide = false end
+                end
+            end
+        end)
+    else
+        if NoclipConnection then
+            NoclipConnection:Disconnect()
+            NoclipConnection = nil
+        end
+    end
+end
+
+local FlyConnection = nil
+local function EnableFly(enable, speed)
+    speed = speed or 200
+    local hrp = GetHRP()
+    if not hrp then return end
+    if enable then
+        local bv = hrp:FindFirstChild("FlyVelocity") or Instance.new("BodyVelocity")
+        bv.Name = "FlyVelocity"
+        bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+        bv.Velocity = Vector3.zero
+        bv.Parent = hrp
+
+        if FlyConnection then FlyConnection:Disconnect() end
+        FlyConnection = RunService.RenderStepped:Connect(function()
+            local bv2 = hrp:FindFirstChild("FlyVelocity")
+            if not bv2 then return end
+            local cam = workspace.CurrentCamera
+            local dir = Vector3.zero
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir = dir + cam.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir = dir - cam.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir = dir - cam.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir = dir + cam.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0, 1, 0) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then dir = dir - Vector3.new(0, 1, 0) end
+            bv2.Velocity = dir.Magnitude > 0 and dir.Unit * speed or Vector3.zero
+        end)
+    else
+        if FlyConnection then FlyConnection:Disconnect(); FlyConnection = nil end
+        if hrp:FindFirstChild("FlyVelocity") then hrp.FlyVelocity:Destroy() end
+    end
+end
+
+-- FIX BUG #10: ServerHop bọc pcall kỹ lưỡng
+local function ServerHop()
+    local ok, jobId = pcall(function()
+        local url = "https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+        local res = HttpService:JSONDecode(game:HttpGet(url))
+        if res and res.data then
+            for _, srv in ipairs(res.data) do
+                if srv.playing < srv.maxPlayers and srv.id ~= game.JobId then
+                    return srv.id
+                end
+            end
+        end
+        return nil
+    end)
+    if ok and jobId then
+        TeleportService:TeleportToPlaceInstance(PlaceId, jobId, LP)
+    else
+        pcall(function()
+            StarterGui:SetCore("SendNotification", {
+                Title = "Lỗi", Text = "Không tìm thấy server", Duration = 3,
+            })
+        end)
+    end
+end
+
+local function Rejoin()
+    TeleportService:TeleportToPlaceInstance(PlaceId, game.JobId, LP)
+end
+
+local function BringMob(mob, targetCF)
+    if not mob or not mob:FindFirstChild("HumanoidRootPart") then return end
+    pcall(function()
+        local hrp = mob.HumanoidRootPart
+        local hum = mob:FindFirstChildOfClass("Humanoid")
+        hrp.CFrame = targetCF
+        if hum then
+            hum.JumpPower = 0
+            hum.WalkSpeed = 0
+        end
+        hrp.CanCollide = false
+        if not hrp:FindFirstChild("BringLock") then
+            local bv = Instance.new("BodyVelocity")
+            bv.Name = "BringLock"
+            bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+            bv.Velocity = Vector3.zero
+            bv.Parent = hrp
+        end
+    end)
+end
+
+print("✅ LƯỢT 1/3: Core System + UI + Quest DB + Helpers hoàn tất")
+print("   👉 Nói 'tiếp' để nhận LƯỢT 2/3 (Farming + Sea Events + Race)")
+-- ============================================================================
+-- 🌾 PHẦN 2: FARMING SYSTEM (Level, Material, Boss, Mob, Factory, Bone, CakePrince)
+-- ============================================================================
+
+-- 📋 Lấy trạng thái quest từ UI
+local function GetQuestStatus()
+    local pg = LP:FindFirstChild("PlayerGui")
+    if not pg then return { hasQuest = false } end
+    local main = pg:FindFirstChild("Main")
+    if not main then return { hasQuest = false } end
+    local questUI = main:FindFirstChild("Quest")
+    if not questUI then return { hasQuest = false } end
+
+    local title = ""
+    if questUI.Visible then
+        local container = questUI:FindFirstChild("Container")
+        if container then
+            local qTitle = container:FindFirstChild("QuestTitle")
+            if qTitle then
+                local titleLbl = qTitle:FindFirstChild("Title")
+                if titleLbl then title = titleLbl.Text or "" end
+            end
+        end
+    end
+    return { hasQuest = questUI.Visible, title = title, ui = questUI }
+end
+
+-- ============================================================================
+-- 🌾 AUTO FARM LEVEL
+-- ============================================================================
+local AutoFarmLevel = { Enabled = false, Mode = "Quest", SelectWeapon = "Melee" }
+
+task.spawn(function()
+    while task.wait(0.1) do
+        if not AutoFarmLevel.Enabled then continue end
+        pcall(function()
+            local char = GetCharacter()
+            local hrp  = GetHRP()
+            if not char or not hrp or not IsAlive() then return end
+
+            CheckQuest()
+            if not QuestData.NameQuest then return end
+
+            local status = GetQuestStatus()
+            if AutoFarmLevel.Mode == "Quest" then
+                if not status.hasQuest
+                   or (QuestData.NameMon and not string.find(status.title, QuestData.NameMon)) then
+                    InvokeServer("AbandonQuest")
+                    task.wait(0.2)
+                    TweenTo(QuestData.CFrameQuest, 320)
+                    task.wait(1)
+                    InvokeServer("StartQuest", QuestData.NameQuest, QuestData.LevelQuest)
+                    return
+                end
+            end
+
+            local targetMob
+            if AutoFarmLevel.Mode == "Nearest" then
+                targetMob = FindNearestMonster(3000)
+            else
+                targetMob = FindMonster(QuestData.NameMon)
+            end
+
+            if targetMob and targetMob:FindFirstChild("HumanoidRootPart") then
+                local mobPos = targetMob.HumanoidRootPart.Position + Vector3.new(0, 10, 0)
+                TweenTo(CFrame.new(mobPos), 280)
+                EquipWeapon(AutoFarmLevel.SelectWeapon)
+                AutoHaki()
+                DoAttack()
+                BringMob(targetMob, hrp.CFrame * CFrame.new(0, 0, -5))
+                targetMob.HumanoidRootPart.CanCollide = false
+                if targetMob:FindFirstChild("Head") then
+                    targetMob.Head.CanCollide = false
+                end
+            elseif QuestData.CFrameMon then
+                TweenTo(QuestData.CFrameMon, 280)
+            end
+        end)
+    end
+end)
+
+-- ============================================================================
+-- 🎁 AUTO FARM MATERIAL
+-- ============================================================================
+local MaterialDatabase = {
+    -- World 1
+    { name = "Magma Ore",           world = 1, mob = "Military Spy",       cf = CFrame.new(-5802.86, 86.26, 8828.85) },
+    { name = "Leather",             world = 1, mob = "Brute",              cf = CFrame.new(-1140.08, 14.80, 4322.92) },
+    { name = "Scrap Metal",         world = 1, mob = "Brute",              cf = CFrame.new(-1140.08, 14.80, 4322.92) },
+    { name = "Angel Wings",         world = 1, mob = "Royal Soldier",      cf = CFrame.new(-7836.75, 5645.66, -1790.62) },
+    -- World 2
+    { name = "Radioactive Material", world = 2, mob = "Factory Staff",     cf = CFrame.new(73.07, 81.86, -27.47) },
+    { name = "Mystic Droplet",      world = 2, mob = "Water Fighter",      cf = CFrame.new(-3352.90, 285.01, -10534.84) },
+    { name = "Magma Ore",           world = 2, mob = "Lava Pirate",        cf = CFrame.new(-5213.33, 49.73, -4701.45) },
+    { name = "Leather",             world = 2, mob = "Marine Captain",     cf = CFrame.new(-1861.23, 80.17, -3254.69) },
+    { name = "Scrap Metal",         world = 2, mob = "Mercenary",          cf = CFrame.new(-1004.32, 80.15, 1424.61) },
+    { name = "Ectoplasm",           world = 2,
+      mobs = {"Ship Deckhand", "Ship Engineer", "Ship Steward", "Ship Officer"},
+      cf   = CFrame.new(1037.80, 125.09, 32911.60) },
+    -- World 3
+    { name = "Leather",             world = 3, mob = "Pirate Millionaire", cf = CFrame.new(-245.99, 47.30, 5584.10) },
+    { name = "Scrap Metal",         world = 3, mob = "Pirate Millionaire", cf = CFrame.new(-245.99, 47.30, 5584.10) },
+    { name = "Conjured Cocoa",      world = 3, mob = "Chocolate Bar Battler", cf = CFrame.new(582.59, 77.18, -12463.16) },
+    { name = "Dragon Scale",        world = 3, mob = "Dragon Crew Warrior", cf = CFrame.new(6141.14, 51.35, -1340.73) },
+    { name = "Gunpowder",           world = 3, mob = "Pistol Billionaire", cf = CFrame.new(-187.33, 86.23, 6013.51) },
+    { name = "Fish Tail",           world = 3, mob = "Fishman Captain",    cf = CFrame.new(-10994.70, 352.38, -9002.11) },
+    { name = "Mini Tusk",           world = 3, mob = "Mythological Pirate", cf = CFrame.new(-13680.60, 501.08, -6991.18) },
+}
+
+local AutoFarmMaterial = { Enabled = false, SelectedMaterial = nil }
+
+task.spawn(function()
+    while task.wait(0.1) do
+        if not AutoFarmMaterial.Enabled or not AutoFarmMaterial.SelectedMaterial then continue end
+        pcall(function()
+            local char = GetCharacter()
+            local hrp  = GetHRP()
+            if not char or not hrp or not IsAlive() then return end
+
+            local matData
+            for _, data in ipairs(MaterialDatabase) do
+                if data.name == AutoFarmMaterial.SelectedMaterial and data.world == CurrentWorld then
+                    matData = data
+                    break
+                end
+            end
+            if not matData then return end
+
+            local targetMob
+            if matData.mob then
+                targetMob = FindMonster(matData.mob)
+            elseif matData.mobs then
+                for _, mobName in ipairs(matData.mobs) do
+                    targetMob = FindMonster(mobName)
+                    if targetMob then break end
+                end
+            end
+
+            if targetMob and targetMob:FindFirstChild("HumanoidRootPart") then
+                TweenTo(targetMob.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0), 280)
+                EquipWeapon(AutoFarmLevel.SelectWeapon)
+                AutoHaki()
+                DoAttack()
+                BringMob(targetMob, hrp.CFrame * CFrame.new(0, 0, -5))
+            elseif matData.cf then
+                TweenTo(matData.cf, 280)
+            end
+        end)
+    end
+end)
+
+-- ============================================================================
+-- 👑 AUTO FARM BOSS
+-- ============================================================================
+local AutoFarmBoss = { Enabled = false, SelectedBoss = nil, HopIfNotFound = false }
+
+task.spawn(function()
+    while task.wait(0.15) do
+        if not AutoFarmBoss.Enabled or not AutoFarmBoss.SelectedBoss then continue end
+        pcall(function()
+            local char = GetCharacter()
+            local hrp  = GetHRP()
+            if not char or not hrp or not IsAlive() then return end
+
+            local boss = FindMonster(AutoFarmBoss.SelectedBoss)
+            if boss and boss:FindFirstChild("HumanoidRootPart") then
+                TweenTo(boss.HumanoidRootPart.CFrame * CFrame.new(0, 15, 0), 300)
+                EquipWeapon(AutoFarmLevel.SelectWeapon)
+                AutoHaki()
+                DoAttack()
+                boss.HumanoidRootPart.CanCollide = false
+                if boss:FindFirstChild("Humanoid") then
+                    boss.Humanoid.WalkSpeed = 0
+                    boss.Humanoid.JumpPower = 0
+                end
+            else
+                if AutoFarmBoss.HopIfNotFound then
+                    task.wait(2)
+                    ServerHop()
+                else
+                    StopTween()
+                end
+            end
+        end)
+    end
+end)
+
+-- ============================================================================
+-- 🎯 MOB AURA
+-- ============================================================================
+local MobAura = { Enabled = false, Range = 300 }
+
+task.spawn(function()
+    while task.wait(0.1) do
+        if not MobAura.Enabled then continue end
+        pcall(function()
+            local hrp = GetHRP()
+            if not hrp or not IsAlive() then return end
+            local enemies = workspace:FindFirstChild("Enemies")
+            if not enemies then return end
+
+            for _, mob in pairs(enemies:GetChildren()) do
+                if mob:FindFirstChild("HumanoidRootPart") and mob:FindFirstChild("Humanoid")
+                   and mob.Humanoid.Health > 0 then
+                    local d = (mob.HumanoidRootPart.Position - hrp.Position).Magnitude
+                    if d <= MobAura.Range then
+                        TweenTo(mob.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0), 350)
+                        EquipWeapon(AutoFarmLevel.SelectWeapon)
+                        AutoHaki()
+                        DoAttack()
+                        BringMob(mob, hrp.CFrame * CFrame.new(0, 0, -5))
+                        break
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+-- ============================================================================
+-- 🏭 AUTO FACTORY (Sea 2)
+-- ============================================================================
+local AutoFactory = { Enabled = false }
+
+task.spawn(function()
+    while task.wait(0.15) do
+        if not AutoFactory.Enabled or not World2 then continue end
+        pcall(function()
+            local hrp = GetHRP()
+            if not hrp or not IsAlive() then return end
+            local enemies = workspace:FindFirstChild("Enemies")
+            if not enemies then return end
+            local core = enemies:FindFirstChild("Core")
+            if core and core:FindFirstChild("HumanoidRootPart") then
+                TweenTo(core.HumanoidRootPart.CFrame * CFrame.new(0, 15, 0), 320)
+                EquipWeapon(AutoFarmLevel.SelectWeapon)
+                AutoHaki()
+                DoAttack()
+                EnableNoclip(true)
+            else
+                TweenTo(CFrame.new(424.12, 211.16, -427.54), 320)
+            end
+        end)
+    end
+end)
+
+-- ============================================================================
+-- 💀 AUTO BONE FARM (Sea 3)
+-- ============================================================================
+local AutoBoneFarm = { Enabled = false, AutoTrade = false }
+
+task.spawn(function()
+    while task.wait(0.15) do
+        if not AutoBoneFarm.Enabled or not World3 then continue end
+        pcall(function()
+            local hrp = GetHRP()
+            if not hrp or not IsAlive() then return end
+            local boneMobs = {"Reborn Skeleton", "Living Zombie", "Demonic Soul", "Posessed Mummy"}
+            local targetMob
+            for _, mobName in ipairs(boneMobs) do
+                targetMob = FindMonster(mobName)
+                if targetMob then break end
+            end
+            if targetMob and targetMob:FindFirstChild("HumanoidRootPart") then
+                TweenTo(targetMob.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0), 300)
+                EquipWeapon(AutoFarmLevel.SelectWeapon)
+                AutoHaki()
+                DoAttack()
+                BringMob(targetMob, hrp.CFrame * CFrame.new(0, 0, -5))
+            else
+                TweenTo(CFrame.new(-9479.21, 141.21, 5566.09), 300)
+            end
+            if AutoBoneFarm.AutoTrade then
+                pcall(function() InvokeServer("Bones", "Buy", 1, 1) end)
+            end
+        end)
+    end
+end)
+
+-- ============================================================================
+-- 🎂 AUTO CAKE PRINCE (Sea 3)
+-- ============================================================================
+local AutoCakePrince = { Enabled = false }
+
+task.spawn(function()
+    while task.wait(0.15) do
+        if not AutoCakePrince.Enabled or not World3 then continue end
+        pcall(function()
+            local hrp = GetHRP()
+            if not hrp or not IsAlive() then return end
+
+            local prince = FindMonster("Cake Prince")
+            if prince and prince:FindFirstChild("HumanoidRootPart") then
+                TweenTo(prince.HumanoidRootPart.CFrame * CFrame.new(0, 15, 0), 300)
+                EquipWeapon(AutoFarmLevel.SelectWeapon)
+                AutoHaki()
+                DoAttack()
+                prince.HumanoidRootPart.CanCollide = false
+                if prince:FindFirstChild("Humanoid") then
+                    prince.Humanoid.WalkSpeed = 0
+                end
+                return
+            end
+
+            local cakeMobs = {"Cookie Crafter", "Cake Guard", "Baking Staff", "Head Baker"}
+            local targetMob
+            for _, mobName in ipairs(cakeMobs) do
+                targetMob = FindMonster(mobName)
+                if targetMob then break end
+            end
+            if targetMob and targetMob:FindFirstChild("HumanoidRootPart") then
+                TweenTo(targetMob.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0), 300)
+                EquipWeapon(AutoFarmLevel.SelectWeapon)
+                AutoHaki()
+                DoAttack()
+                BringMob(targetMob, hrp.CFrame * CFrame.new(0, 0, -5))
+            else
+                TweenTo(CFrame.new(-2021.32, 37.79, -12028.72), 300)
+            end
+        end)
+    end
+end)
+
+print("✅ LƯỢT 2/3 - Phần 2: Farming System (Level/Material/Boss/MobAura/Factory/Bone/CakePrince)")
+
+-- ============================================================================
+-- 🌊 PHẦN 3: SEA EVENTS, RAIDS, DUNGEON, LEVIATHAN, MIRAGE
+-- ============================================================================
+
+-- ⚓ AUTO LAW RAID (Sea 2)
+local AutoLawRaid = { Enabled = false, AutoBuyChip = true }
+
+task.spawn(function()
+    while task.wait(0.2) do
+        if not AutoLawRaid.Enabled or not World2 then continue end
+        pcall(function()
+            local hrp = GetHRP()
+            if not hrp or not IsAlive() then return end
+
+            local enemies   = workspace:FindFirstChild("Enemies")
+            local orderMob  = enemies and enemies:FindFirstChild("Order")
+            local orderRep  = ReplicatedStorage:FindFirstChild("Order")
+            local char      = GetCharacter()
+
+            if AutoLawRaid.AutoBuyChip then
+                local hasChip = LP.Backpack:FindFirstChild("Microchip")
+                    or (char and char:FindFirstChild("Microchip"))
+                if not hasChip and not orderMob and not orderRep and GetFragments() >= 1000 then
+                    InvokeServer("BlackbeardReward", "Microchip", "1")
+                    InvokeServer("BlackbeardReward", "Microchip", "2")
+                    task.wait(1)
+                end
+            end
+
+            if not orderMob and not orderRep then
+                local hasChip = LP.Backpack:FindFirstChild("Microchip")
+                    or (char and char:FindFirstChild("Microchip"))
+                if hasChip then
+                    local summonBtn = workspace:FindFirstChild("Map")
+                        and workspace.Map:FindFirstChild("CircleIsland")
+                        and workspace.Map.CircleIsland:FindFirstChild("RaidSummon")
+                        and workspace.Map.CircleIsland.RaidSummon:FindFirstChild("Button")
+                        and workspace.Map.CircleIsland.RaidSummon.Button:FindFirstChild("Main")
+                    if summonBtn and summonBtn:FindFirstChild("ClickDetector") then
+                        TweenTo(summonBtn.CFrame, 300)
+                        task.wait(0.5)
+                        fireclickdetector(summonBtn.ClickDetector)
+                        task.wait(2)
+                    end
+                end
+            else
+                if orderMob and orderMob:FindFirstChild("HumanoidRootPart") then
+                    TweenTo(orderMob.HumanoidRootPart.CFrame * CFrame.new(0, 20, 0), 300)
+                    EquipWeapon(AutoFarmLevel.SelectWeapon)
+                    AutoHaki()
+                    DoAttack()
+                    orderMob.HumanoidRootPart.CanCollide = false
+                    orderMob.HumanoidRootPart.Size = Vector3.new(60, 60, 60)
+                else
+                    TweenTo(CFrame.new(-6217.20, 28.04, -5053.13), 300)
+                end
+            end
+        end)
+    end
+end)
+
+-- 🏴‍☠️ AUTO PIRATE RAID
+local AutoPirateRaid = { Enabled = false }
+
+task.spawn(function()
+    while task.wait(0.2) do
+        if not AutoPirateRaid.Enabled then continue end
+        pcall(function()
+            local hrp = GetHRP()
+            if not hrp or not IsAlive() then return end
+            local enemies = workspace:FindFirstChild("Enemies")
+            if not enemies then return end
+
+            local pirateBoats = {"PirateBrigade", "PirateGrandBrigade"}
+            local target
+            for _, boatName in ipairs(pirateBoats) do
+                local boat = enemies:FindFirstChild(boatName)
+                if boat and boat:FindFirstChild("Health") and boat.Health.Value > 0 then
+                    target = boat
+                    break
+                end
+            end
+
+            if target then
+                local part = target:FindFirstChild("Engine")
+                    or target:FindFirstChild("HumanoidRootPart")
+                    or target.PrimaryPart
+                if part then
+                    TweenTo(part.CFrame * CFrame.new(0, 20, 0), 300)
+                    EquipWeapon(AutoFarmLevel.SelectWeapon)
+                    AutoHaki()
+                    DoAttack()
+                end
+            end
+        end)
+    end
+end)
+
+-- 🦑 AUTO SEA BEAST
+local AutoSeaBeast = { Enabled = false }
+
+task.spawn(function()
+    while task.wait(0.2) do
+        if not AutoSeaBeast.Enabled then continue end
+        pcall(function()
+            local hrp = GetHRP()
+            if not hrp or not IsAlive() then return end
+            local seaBeasts = workspace:FindFirstChild("SeaBeasts")
+            if not seaBeasts then return end
+
+            for _, beast in pairs(seaBeasts:GetChildren()) do
+                if beast:FindFirstChild("HumanoidRootPart")
+                   and beast:FindFirstChild("Health")
+                   and beast.Health.Value > 0 then
+                    local d = (beast.HumanoidRootPart.Position - hrp.Position).Magnitude
+                    if d < 3000 then
+                        TweenTo(beast.HumanoidRootPart.CFrame * CFrame.new(0, 150, 0), 300)
+                        EquipWeapon(AutoFarmLevel.SelectWeapon)
+                        AutoHaki()
+                        DoAttack()
+                        break
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+-- 🏝️ AUTO FIND MIRAGE
+local AutoFindMirage = { Enabled = false, HopIfNotFound = true }
+
+task.spawn(function()
+    while task.wait(3) do
+        if not AutoFindMirage.Enabled or not World3 then continue end
+        pcall(function()
+            local map    = workspace:FindFirstChild("Map")
+            local mirage = map and map:FindFirstChild("MysticIsland")
+
+            if mirage then
+                local highest, maxY = nil, -math.huge
+                for _, part in pairs(mirage:GetDescendants()) do
+                    if part:IsA("MeshPart") or part:IsA("BasePart") then
+                        if part.Position.Y > maxY then
+                            maxY = part.Position.Y
+                            highest = part
+                        end
+                    end
+                end
+                if highest then
+                    TweenTo(CFrame.new(highest.Position.X, highest.Position.Y + 212, highest.Position.Z), 300)
+                end
+                AutoFindMirage.Enabled = false
+            elseif AutoFindMirage.HopIfNotFound then
+                ServerHop()
+            end
+        end)
+    end
+end)
+
+-- 🦊 AUTO FIND KITSUNE
+local AutoFindKitsune = { Enabled = false, HopIfNotFound = true }
+
+task.spawn(function()
+    while task.wait(3) do
+        if not AutoFindKitsune.Enabled or not World3 then continue end
+        pcall(function()
+            local map     = workspace:FindFirstChild("Map")
+            local kitsune = map and map:FindFirstChild("KitsuneIsland")
+
+            if kitsune then
+                local shrineInactive = kitsune:FindFirstChild("ShrineInactive")
+                if shrineInactive then
+                    TweenTo(shrineInactive.WorldPivot or shrineInactive.CFrame, 300)
+                end
+                AutoFindKitsune.Enabled = false
+            elseif AutoFindKitsune.HopIfNotFound then
+                ServerHop()
+            end
+        end)
+    end
+end)
+
+-- 🌙 AUTO FULL MOON HOP
+local AutoFindFullMoon = { Enabled = false }
+
+task.spawn(function()
+    while task.wait(2) do
+        if not AutoFindFullMoon.Enabled then continue end
+        pcall(function()
+            local moonId = Lighting.Sky.MoonTextureId
+            local fullMoonIds = {
+                "http://www.roblox.com/asset/?id=9709149052",
+                "http://www.roblox.com/asset/?id=9709149431",
+            }
+            local isFullMoon = false
+            for _, id in ipairs(fullMoonIds) do
+                if moonId == id then
+                    isFullMoon = true
+                    break
+                end
+            end
+
+            if not isFullMoon then
+                ServerHop()
+            else
+                AutoFindFullMoon.Enabled = false
+            end
+        end)
+    end
+end)
+
+-- 🗿 AUTO ELITE HUNTER
+local AutoEliteHunter = { Enabled = false }
+
+task.spawn(function()
+    while task.wait(0.2) do
+        if not AutoEliteHunter.Enabled or not World3 then continue end
+        pcall(function()
+            local hrp = GetHRP()
+            if not hrp or not IsAlive() then return end
+
+            local questStatus = GetQuestStatus()
+            if not questStatus.hasQuest or not string.find(questStatus.title, "Diablo") then
+                InvokeServer("EliteHunter")
+                task.wait(1)
+            end
+
+            local eliteNames = {"Diablo", "Deandre", "Urban"}
+            local targetBoss
+            for _, name in ipairs(eliteNames) do
+                targetBoss = FindMonster(name)
+                if targetBoss then break end
+                local rsMob = ReplicatedStorage:FindFirstChild(name)
+                if rsMob and rsMob:FindFirstChild("HumanoidRootPart") then
+                    TweenTo(rsMob.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0), 300)
+                    break
+                end
+            end
+
+            if targetBoss and targetBoss:FindFirstChild("HumanoidRootPart") then
+                TweenTo(targetBoss.HumanoidRootPart.CFrame * CFrame.new(0, 15, 0), 300)
+                EquipWeapon(AutoFarmLevel.SelectWeapon)
+                AutoHaki()
+                DoAttack()
+                targetBoss.HumanoidRootPart.CanCollide = false
+            end
+        end)
+    end
+end)
+
+-- 📜 AUTO DUNGEON (đang trong raid)
+local AutoDungeon = { Enabled = false }
+
+task.spawn(function()
+    while task.wait(0.3) do
+        if not AutoDungeon.Enabled then continue end
+        pcall(function()
+            local pg = LP:FindFirstChild("PlayerGui")
+            local topHud = pg and pg:FindFirstChild("Main") and pg.Main:FindFirstChild("TopHUDList")
+            local inRaid = topHud and topHud:FindFirstChild("RaidTimer") and topHud.RaidTimer.Visible
+
+            if inRaid then
+                local hrp = GetHRP()
+                if not hrp or not IsAlive() then return end
+                local enemies = workspace:FindFirstChild("Enemies")
+                if enemies then
+                    for _, mob in pairs(enemies:GetChildren()) do
+                        if mob:FindFirstChild("HumanoidRootPart") and mob:FindFirstChild("Humanoid")
+                           and mob.Humanoid.Health > 0 then
+                            local d = (mob.HumanoidRootPart.Position - hrp.Position).Magnitude
+                            if d < 500 then
+                                TweenTo(mob.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0), 300)
+                                EquipWeapon(AutoFarmLevel.SelectWeapon)
+                                AutoHaki()
+                                DoAttack()
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+-- 🚢 MUA THUYỀN
+local function BuyBoat(boatType)
+    boatType = boatType or "Brigade"
+    pcall(function()
+        if boatType == "Brigade" or boatType == "GrandBrigade" then
+            InvokeServer("BuyBoat", "Pirate" .. boatType)
+        else
+            InvokeServer("BuyBoat", boatType)
+        end
+    end)
+end
+
+-- 🐉 AUTO LEVIATHAN
+local AutoLeviathan = { Enabled = false, AutoFind = false, AutoAttack = false }
+
+task.spawn(function()
+    while task.wait(1) do
+        if not AutoLeviathan.Enabled or not AutoLeviathan.AutoFind or not World3 then continue end
+        pcall(function()
+            local locations = workspace:FindFirstChild("_WorldOrigin")
+                and workspace._WorldOrigin:FindFirstChild("Locations")
+            local frozen = locations and locations:FindFirstChild("Frozen Dimension")
+
+            if not frozen then
+                local hrp = GetHRP()
+                if hrp and IsAlive() then
+                    local myBoats = workspace:FindFirstChild("Boats")
+                    if myBoats then
+                        local hasBoat = false
+                        for _, boat in pairs(myBoats:GetChildren()) do
+                            if boat:FindFirstChild("Owner") and boat.Owner.Value == LP then
+                                hasBoat = true
+                                break
+                            end
+                        end
+                        if not hasBoat and GetBeli() >= 500000 then
+                            BuyBoat("Beast Hunter")
+                        end
+                    end
+                end
+            else
+                TweenTo(frozen.CFrame, 300)
+            end
+        end)
+    end
+end)
+
+task.spawn(function()
+    while task.wait(0.15) do
+        if not AutoLeviathan.Enabled or not AutoLeviathan.AutoAttack then continue end
+        pcall(function()
+            local seaBeasts = workspace:FindFirstChild("SeaBeasts")
+            if not seaBeasts then return end
+            for _, beast in pairs(seaBeasts:GetChildren()) do
+                if string.find(beast.Name, "Leviathan")
+                   and beast:FindFirstChild("HumanoidRootPart")
+                   and beast:FindFirstChild("Health")
+                   and beast.Health.Value > 0 then
+                    local hrp = GetHRP()
+                    if hrp then
+                        TweenTo(beast.HumanoidRootPart.CFrame * CFrame.new(0, 140, 0), 300)
+                        EquipWeapon(AutoFarmLevel.SelectWeapon)
+                        AutoHaki()
+                        DoAttack()
+                    end
+                    break
+                end
+            end
+        end)
+    end
+end)
+
+-- 🎲 AUTO RANDOM FRUIT
+local AutoRandomFruit = { Enabled = false }
+
+task.spawn(function()
+    while task.wait(1) do
+        if not AutoRandomFruit.Enabled then continue end
+        pcall(function()
+            if GetBeli() >= 3000000 then
+                InvokeServer("LoadFruit")
+            end
+        end)
+    end
+end)
+
+-- 🎁 AUTO STORE FRUIT
+local AutoStoreFruit = { Enabled = false }
+
+task.spawn(function()
+    while task.wait(2) do
+        if not AutoStoreFruit.Enabled then continue end
+        pcall(function()
+            local fruits = {}
+            for _, item in pairs(LP.Backpack:GetChildren()) do
+                if item:IsA("Tool") and string.find(item.Name, "Fruit") then
+                    table.insert(fruits, item)
+                end
+            end
+            local char = GetCharacter()
+            if char then
+                for _, item in pairs(char:GetChildren()) do
+                    if item:IsA("Tool") and string.find(item.Name, "Fruit") then
+                        table.insert(fruits, item)
+                    end
+                end
+            end
+            for _, fruit in ipairs(fruits) do
+                local originalName = fruit:GetAttribute("OriginalName") or fruit.Name
+                InvokeServer("StoreFruit", originalName, fruit)
+                task.wait(0.3)
+            end
+        end)
+    end
+end)
+
+print("✅ LƯỢT 2/3 - Phần 3: Sea Events / Raids / Dungeon / Leviathan / Mirage")
+
+-- ============================================================================
+-- 👥 PHẦN 4: RACE V2-V4, DRACO, ITEMS (CDK, YAMA, TUSHITA)
+-- ============================================================================
+
+-- 🧬 Đọc thông tin race hiện tại
+local function GetRaceInfo()
+    local race    = "Human"
+    local version = "V1"
+    local data    = LP:FindFirstChild("Data")
+    if data and data:FindFirstChild("Race") then
+        race = data.Race.Value
+    end
+    local char = GetCharacter()
+    if char and char:FindFirstChild("RaceTransformed") then
+        version = "V4"
+    else
+        if InvokeServer("Alchemist", "1") == -2 then version = "V2" end
+        if InvokeServer("Wenlocktoad", "1") == -2 then version = "V3" end
+    end
+    return { race = race, version = version }
+end
+
+-- 🌟 AUTO RACE V2
+local AutoRaceV2 = { Enabled = false }
+
+task.spawn(function()
+    while task.wait(0.3) do
+        if not AutoRaceV2.Enabled then continue end
+        pcall(function()
+            local info = GetRaceInfo()
+            if info.version ~= "V1" then
+                AutoRaceV2.Enabled = false
+                return
+            end
+            if GetBeli() < 500000 then return end
+
+            local hrp = GetHRP()
+            if not hrp then return end
+
+            if info.race == "Human" then
+                local jeremy = FindMonster("Jeremy")
+                if jeremy and jeremy:FindFirstChild("HumanoidRootPart") then
+                    TweenTo(jeremy.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0), 300)
+                    EquipWeapon(AutoFarmLevel.SelectWeapon)
+                    AutoHaki()
+                    DoAttack()
+                else
+                    TweenTo(CFrame.new(-2208.10, 72.96, 1466.53), 300)
+                end
+            elseif info.race == "Skypiea" then
+                -- PVP quest — cần account khác, bỏ qua
+            elseif info.race == "Fishman" then
+                local seaBeasts = workspace:FindFirstChild("SeaBeasts")
+                if seaBeasts then
+                    for _, beast in pairs(seaBeasts:GetChildren()) do
+                        if beast:FindFirstChild("HumanoidRootPart") then
+                            TweenTo(beast.HumanoidRootPart.CFrame * CFrame.new(0, 100, 0), 300)
+                            EquipWeapon(AutoFarmLevel.SelectWeapon)
+                            DoAttack()
+                            break
+                        end
+                    end
+                end
+            elseif info.race == "Mink" then
+                local chests = CollectionService:GetTagged("_ChestTagged")
+                if #chests > 0 then
+                    local nearest, shortest = chests[1], math.huge
+                    for _, chest in ipairs(chests) do
+                        local d = (chest:GetPivot().Position - hrp.Position).Magnitude
+                        if d < shortest then shortest = d; nearest = chest end
+                    end
+                    TweenTo(nearest:GetPivot(), 300)
+                end
+            elseif info.race == "Cyborg" then
+                -- Cần Core Brain từ Law raid
+            elseif info.race == "Ghoul" then
+                local ectoMob = FindMonster("Ship Deckhand")
+                if ectoMob then
+                    TweenTo(ectoMob.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0), 300)
+                    EquipWeapon(AutoFarmLevel.SelectWeapon)
+                    DoAttack()
+                end
+            end
+        end)
+    end
+end)
+
+-- 🎯 AUTO RACE V3
+local AutoRaceV3 = { Enabled = false }
+
+task.spawn(function()
+    while task.wait(0.3) do
+        if not AutoRaceV3.Enabled or not World2 then continue end
+        pcall(function()
+            local info = GetRaceInfo()
+            if info.version ~= "V2" then
+                AutoRaceV3.Enabled = false
+                return
+            end
+            local hrp = GetHRP()
+            if not hrp then return end
+            local aroweCF = CFrame.new(-2777.60, 72.96, -3571.42)
+            if (hrp.Position - aroweCF.Position).Magnitude > 100 then
+                TweenTo(aroweCF, 300)
+            else
+                InvokeServer("Wenlocktoad", "2")
+            end
+        end)
+    end
+end)
+
+-- 🏛️ AUTO RACE V4
+local AutoRaceV4 = { Enabled = false, AutoTrial = true, AutoPullLever = true }
+
+task.spawn(function()
+    while task.wait(0.5) do
+        if not AutoRaceV4.Enabled or not World3 then continue end
+        pcall(function()
+            local info = GetRaceInfo()
+            if info.version ~= "V3" then return end
+            local hrp = GetHRP()
+            if not hrp then return end
+
+            local templeCF  = CFrame.new(28282.57, 14896.85, 105.10)
+            local locations = workspace:FindFirstChild("_WorldOrigin")
+                and workspace._WorldOrigin:FindFirstChild("Locations")
+            local trials = {
+                "Trial of Strength", "Trial of Speed", "Trial of Water",
+                "Trial of the King", "Trial of Carnage", "Trial of Flames",
+            }
+            local inTrial = false
+            if locations then
+                for _, trialName in ipairs(trials) do
+                    if locations:FindFirstChild(trialName) then
+                        if (hrp.Position - locations[trialName].Position).Magnitude < 1500 then
+                            inTrial = true
+                            break
+                        end
+                    end
+                end
+            end
+
+            if inTrial then
+                if info.race == "Human" then
+                    local mob = FindNearestMonster(1000)
+                    if mob then
+                        TweenTo(mob.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0), 300)
+                        EquipWeapon(AutoFarmLevel.SelectWeapon)
+                        AutoHaki()
+                        DoAttack()
+                    end
+                elseif info.race == "Skypiea" then
+                    local skyTrial = workspace:FindFirstChild("Map")
+                        and workspace.Map:FindFirstChild("SkyTrial")
+                        and workspace.Map.SkyTrial:FindFirstChild("Model")
+                        and workspace.Map.SkyTrial.Model:FindFirstChild("FinishPart")
+                    if skyTrial then TweenTo(skyTrial.CFrame, 350) end
+                elseif info.race == "Mink" then
+                    local startPoint = workspace:FindFirstChild("StartPoint")
+                    if startPoint then TweenTo(startPoint.CFrame, 350) end
+                end
+            else
+                if (hrp.Position - templeCF.Position).Magnitude > 100 then
+                    TweenTo(templeCF, 300)
+                end
+            end
+        end)
+    end
+end)
+
+-- 🐲 AUTO DRACO TRIAL
+local AutoDracoTrial = { Enabled = false }
+
+task.spawn(function()
+    while task.wait(0.3) do
+        if not AutoDracoTrial.Enabled or not World3 then continue end
+        pcall(function()
+            local hrp = GetHRP()
+            if not hrp then return end
+            local map         = workspace:FindFirstChild("Map")
+            local prehistoric = map and map:FindFirstChild("PrehistoricIsland")
+
+            if prehistoric then
+                local relics = {}
+                for _, desc in pairs(workspace:GetDescendants()) do
+                    if desc.Name == "Relic" and desc:IsA("Model") then
+                        table.insert(relics, desc)
+                    end
+                end
+
+                if #relics > 0 then
+                    local nearest, shortest = relics[1], math.huge
+                    for _, relic in ipairs(relics) do
+                        local primaryPart = relic.PrimaryPart or relic:FindFirstChildWhichIsA("BasePart")
+                        if primaryPart then
+                            local d = (primaryPart.Position - hrp.Position).Magnitude
+                            if d < shortest then shortest = d; nearest = relic end
+                        end
+                    end
+                    if nearest then
+                        local primaryPart = nearest.PrimaryPart or nearest:FindFirstChildWhichIsA("BasePart")
+                        if primaryPart then TweenTo(primaryPart.CFrame, 300) end
+                    end
+                end
+
+                local golem = FindMonster("Lava Golem")
+                if golem and golem:FindFirstChild("HumanoidRootPart") then
+                    TweenTo(golem.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0), 300)
+                    EquipWeapon(AutoFarmLevel.SelectWeapon)
+                    AutoHaki()
+                    DoAttack()
+                end
+            end
+        end)
+    end
+end)
+
+-- 🗡️ AUTO YAMA
+local AutoGetYama = { Enabled = false }
+
+task.spawn(function()
+    while task.wait(0.3) do
+        if not AutoGetYama.Enabled or not World3 then continue end
+        pcall(function()
+            local progress = InvokeServer("EliteHunter", "Progress")
+            if progress and progress < 30 then
+                AutoEliteHunter.Enabled = true
+            else
+                AutoEliteHunter.Enabled = false
+                local hrp = GetHRP()
+                if not hrp then return end
+                local waterfallCF = CFrame.new(5251.90, 17.18, 453.60)
+                TweenTo(waterfallCF, 300)
+                task.wait(1)
+                local waterfall = workspace:FindFirstChild("Map")
+                    and workspace.Map:FindFirstChild("Waterfall")
+                if waterfall then
+                    local sealedKatana = waterfall:FindFirstChild("SealedKatana")
+                    if sealedKatana and sealedKatana:FindFirstChild("Hitbox")
+                       and sealedKatana.Hitbox:FindFirstChild("ClickDetector") then
+                        fireclickdetector(sealedKatana.Hitbox.ClickDetector)
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+-- ✨ AUTO TUSHITA
+local AutoGetTushita = { Enabled = false }
+
+task.spawn(function()
+    while task.wait(0.3) do
+        if not AutoGetTushita.Enabled or not World3 then continue end
+        pcall(function()
+            local hrp = GetHRP()
+            if not hrp then return end
+            local longma = FindMonster("Longma")
+            if longma and longma:FindFirstChild("HumanoidRootPart") then
+                TweenTo(longma.HumanoidRootPart.CFrame * CFrame.new(0, 15, 0), 300)
+                EquipWeapon(AutoFarmLevel.SelectWeapon)
+                AutoHaki()
+                DoAttack()
+            else
+                TweenTo(CFrame.new(-5325.00, 532.50, -2325.00), 300)
+            end
+        end)
+    end
+end)
+
+-- 🔥 AUTO HOLY TORCH (đốt đuốc) — FIX BUG #4: khai báo rõ ràng
+local AutoHolyTorch = { Enabled = false }
+
+task.spawn(function()
+    while task.wait(0.5) do
+        if not AutoHolyTorch.Enabled or not World3 then continue end
+        pcall(function()
+            local hrp = GetHRP()
+            if not hrp then return end
+            local map = workspace:FindFirstChild("Map")
+            local waterfall = map and map:FindFirstChild("Waterfall")
+            if not waterfall then
+                TweenTo(CFrame.new(5251.90, 17.18, 453.60), 300)
+                return
+            end
+
+            -- Lấy Holy Torch nếu chưa có
+            if not LP.Backpack:FindFirstChild("Holy Torch")
+               and not (GetCharacter() and GetCharacter():FindFirstChild("Holy Torch")) then
+                local torch = waterfall:FindFirstChild("Torch")
+                if torch then TweenTo(torch.CFrame, 300) end
+                return
+            end
+
+            -- Đốt 5 đuốc quanh đảo
+            if fireproximityprompt then
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("ProximityPrompt") and obj.Enabled
+                       and obj.Parent
+                       and tostring(obj.Parent.Name):match("Torch") then
+                        local root = obj.Parent
+                        local pos = root:IsA("BasePart") and root.Position or root:GetPivot().Position
+                        if (pos - hrp.Position).Magnitude < 8 then
+                            pcall(fireproximityprompt, obj)
+                        end
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+-- ============================================================================
+-- 🎯 AUTO CDK — FIX BUG #3: khai báo TRƯỚC KHI DÙNG
+-- ============================================================================
+local AutoCDK = { Enabled = false }
+
+-- Đọc mastery từ Tool.Level (không require module nội bộ game)
+local function GetToolMastery(toolName)
+    local char = GetCharacter()
+    if not char then return 0 end
+    local tool = char:FindFirstChild(toolName) or LP.Backpack:FindFirstChild(toolName)
+    if tool and tool:FindFirstChild("Level") then
+        return tool.Level.Value or 0
+    end
+    return 0
+end
+
+local function HasItem(itemName)
+    local char = GetCharacter()
+    if not char then return false end
+    return char:FindFirstChild(itemName) ~= nil
+        or LP.Backpack:FindFirstChild(itemName) ~= nil
+end
+
+-- Diệt một model: bay lên trên, khóa mục tiêu, spam tấn công
+local function KillModel(model, heightOffset)
+    if not model or not model.Parent then return end
+    local hrp = model:FindFirstChild("HumanoidRootPart")
+    local hum = model:FindFirstChildOfClass("Humanoid")
+    if not hrp or not hum or hum.Health <= 0 then return end
+    EquipWeapon(AutoFarmLevel.SelectWeapon or "Melee")
+    AutoHaki()
+    pcall(function()
+        hum.WalkSpeed = 0
+        hum.JumpPower = 0
+        hrp.CanCollide = false
+    end)
+    local tween = TweenTo(hrp.CFrame * CFrame.new(0, heightOffset or 30, 0), 300)
+    local t0 = tick()
+    while model and model.Parent and hum.Health > 0 and tick() - t0 < 120 do
+        DoAttack()
+        task.wait(0.1)
+    end
+    if tween then tween:Cancel() end
+end
+
+-- Đốt đuốc trong Heavenly/Hell Dimension
+local function FireTorchPrompts()
+    if not fireproximityprompt then return end
+    local hrp = GetHRP()
+    if not hrp then return end
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("ProximityPrompt") and obj.Enabled
+           and obj.Parent and tostring(obj.Parent.Name):match("Torch") then
+            local root = obj.Parent
+            local pos  = root:IsA("BasePart") and root.Position or root:GetPivot().Position
+            if (pos - hrp.Position).Magnitude < 8 then
+                pcall(fireproximityprompt, obj)
+            end
+        end
+    end
+end
+
+local function GetCursedPedestal(pedName)
+    local map    = workspace:FindFirstChild("Map")
+    local turtle = map and map:FindFirstChild("Turtle")
+    local cursed = turtle and turtle:FindFirstChild("Cursed")
+    return cursed and cursed:FindFirstChild(pedName) or nil
+end
+
+local function ActivatePedestal(pedName)
+    local ped = GetCursedPedestal(pedName)
+    if not ped then return false end
+    TweenTo(ped:GetPivot(), 300)
+    task.wait(0.6)
+    local prompt = ped:FindFirstChildOfClass("ProximityPrompt")
+    if prompt and fireproximityprompt then
+        pcall(fireproximityprompt, prompt)
+        return true
+    end
+    return false
+end
+
+task.spawn(function()
+    while task.wait(0.5) do
+        if not AutoCDK.Enabled or not World3 then continue end
+        pcall(function()
+            -- Cần mastery 350 cho cả Tushita và Yama
+            if GetToolMastery("Tushita") < 350 or GetToolMastery("Yama") < 350 then
+                return
+            end
+            if not HasItem("Tushita") then InvokeServer("LoadItem", "Tushita") end
+            if not HasItem("Yama")    then InvokeServer("LoadItem", "Yama")    end
+
+            local prog = InvokeServer("CDKQuest", "Progress", "Good")
+            if type(prog) ~= "table" then return end
+            local good, evil = prog.Good or 0, prog.Evil or 0
+
+            if good == 4 and evil == 3 then ActivatePedestal("Pedestal2"); return end
+            if good == 3 and evil == 4 then ActivatePedestal("Pedestal1"); return end
+
+            if good == 4 and evil == 4 then
+                ActivatePedestal("Pedestal3")
+                local boss = FindMonster("Cursed Skeleton Boss")
+                if boss then KillModel(boss, 20) end
+                return
+            end
+
+            if good < 4 then
+                InvokeServer("CDKQuest", "StartTrial", "Good")
+            elseif evil < 4 then
+                InvokeServer("CDKQuest", "StartTrial", "Evil")
+            end
+            task.wait(1)
+            FireTorchPrompts()
+            local mob = FindNearestMonster(250)
+            if mob then KillModel(mob, 25) end
+        end)
+    end
+end)
+
+print("✅ LƯỢT 2/3 HOÀN TẤT - Phần 4: Race V2-V4 + Draco + Yama/Tushita/CDK")
+print("   👉 Nói 'tiếp' để nhận LƯỢT 3/3 (ESP + PVP + Webhook + Settings + UI + Init)")
+-- ============================================================================
+-- 👁️ PHẦN 5: ESP, PVP, WEBHOOK, SETTINGS, UI WIRING, INIT
+-- ============================================================================
+
+-- ── 5.1 ESP (BillboardGui tự hủy theo instance) ──
+local ESPState = {
+    Players = false, Chests = false, Fruits = false, Flowers = false,
+    Islands = false, Mirage = false, Kitsune = false, Gears = false,
+}
+
+local function AddBillboardESP(adornee, color)
+    if not adornee or adornee:FindFirstChild("MH_ESP") then return end
+    pcall(function()
+        local bb = Instance.new("BillboardGui")
+        bb.Name           = "MH_ESP"
+        bb.Size           = UDim2.new(0, 220, 0, 40)
+        bb.StudsOffset    = Vector3.new(0, 2.5, 0)
+        bb.AlwaysOnTop    = true
+        bb.Adornee        = adornee
+
+        local label = Instance.new("TextLabel")
+        label.BackgroundTransparency = 1
+        label.Size                   = UDim2.new(1, 0, 1, 0)
+        label.Font                   = Enum.Font.GothamBold
+        label.TextSize               = 14
+        label.TextColor3             = color
+        label.TextStrokeTransparency = 0.4
+        label.Text                   = ""
+        label.Parent                 = bb
+
+        bb.Parent = adornee
+    end)
+end
+
+local function RemoveBillboardESP(instance)
+    local e = instance and instance:FindFirstChild("MH_ESP")
+    if e then e:Destroy() end
+end
+
+local function SetESPText(instance, text)
+    local e = instance and instance:FindFirstChild("MH_ESP")
+    if e and e:FindFirstChildOfClass("TextLabel") then
+        e.TextLabel.Text = text
+    end
+end
+
+task.spawn(function()
+    while task.wait(0.5) do
+        pcall(function()
+            local char   = GetCharacter()
+            local head   = char and char:FindFirstChild("Head")
+            local origin = head and head.Position or Vector3.zero
+            local function dist(pos) return math.floor((pos - origin).Magnitude / 3) end
+
+            -- ESP người chơi
+            for _, plr in ipairs(Players:GetPlayers()) do
+                local pChar = plr.Character
+                local hrp   = pChar and pChar:FindFirstChild("HumanoidRootPart")
+                local hum   = pChar and pChar:FindFirstChildOfClass("Humanoid")
+                if plr ~= LP and hrp and hum then
+                    if ESPState.Players and hum.Health > 0 then
+                        AddBillboardESP(hrp, Color3.fromRGB(255, 255, 255))
+                        SetESPText(hrp, string.format("%s | %dm | %d/%d",
+                            plr.Name, dist(hrp.Position),
+                            math.floor(hum.Health), math.floor(hum.MaxHealth)))
+                    else
+                        RemoveBillboardESP(hrp)
+                    end
+                end
+            end
+
+            -- ESP rương
+            for _, chest in ipairs(CollectionService:GetTagged("_ChestTagged")) do
+                if ESPState.Chests and not chest:GetAttribute("IsDisabled") then
+                    AddBillboardESP(chest, Color3.fromRGB(255, 215, 0))
+                    SetESPText(chest, "Chest | " .. dist(chest:GetPivot().Position) .. "m")
+                else
+                    RemoveBillboardESP(chest)
+                end
+            end
+
+            -- ESP trái ác quỷ + hoa
+            for _, obj in ipairs(workspace:GetChildren()) do
+                if (obj:IsA("Tool") or obj:IsA("Model"))
+                   and obj.Name:find("Fruit")
+                   and obj:FindFirstChild("Handle") then
+                    if ESPState.Fruits then
+                        AddBillboardESP(obj.Handle, Color3.fromRGB(255, 100, 200))
+                        SetESPText(obj.Handle, obj.Name .. " | " .. dist(obj.Handle.Position) .. "m")
+                    else
+                        RemoveBillboardESP(obj.Handle)
+                    end
+                elseif obj.Name == "Flower1" or obj.Name == "Flower2" then
+                    if ESPState.Flowers then
+                        AddBillboardESP(obj, obj.Name == "Flower1"
+                            and Color3.fromRGB(0, 100, 255)
+                            or  Color3.fromRGB(255, 0, 0))
+                        SetESPText(obj, (obj.Name == "Flower1" and "Blue Flower | " or "Red Flower | ")
+                            .. dist(obj:GetPivot().Position) .. "m")
+                    else
+                        RemoveBillboardESP(obj)
+                    end
+                end
+            end
+
+            -- ESP đảo / Mirage / Kitsune
+            local locations = workspace:FindFirstChild("_WorldOrigin")
+                and workspace._WorldOrigin:FindFirstChild("Locations")
+            if locations then
+                for _, loc in ipairs(locations:GetChildren()) do
+                    if loc.Name ~= "Sea" and loc:IsA("BasePart") then
+                        local on = ESPState.Islands
+                            or (ESPState.Mirage and loc.Name == "Mirage Island")
+                            or (ESPState.Kitsune and loc.Name == "Kitsune Island")
+                        if on then
+                            AddBillboardESP(loc, Color3.fromRGB(8, 247, 255))
+                            SetESPText(loc, loc.Name .. " | " .. dist(loc.Position) .. "m")
+                        else
+                            RemoveBillboardESP(loc)
+                        end
+                    end
+                end
+            end
+
+            -- ESP bánh răng Mirage
+            local mystic = workspace:FindFirstChild("Map")
+                and workspace.Map:FindFirstChild("MysticIsland")
+            if mystic then
+                for _, part in ipairs(mystic:GetChildren()) do
+                    if part:IsA("MeshPart") then
+                        if ESPState.Gears then
+                            AddBillboardESP(part, Color3.fromRGB(80, 245, 245))
+                            SetESPText(part, "Gear | " .. dist(part.Position) .. "m")
+                        else
+                            RemoveBillboardESP(part)
+                        end
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+-- ── 5.2 PVP / AIMBOT ──
+local PVP = { Aimbot = false, FOV = 80, Target = nil }
+
+local FOVCircle = nil
+pcall(function()
+    if Drawing then
+        FOVCircle = Drawing.new("Circle")
+        FOVCircle.Thickness    = 2
+        FOVCircle.NumSides     = 60
+        FOVCircle.Color        = Color3.fromRGB(191, 255, 209)
+        FOVCircle.Filled       = false
+        FOVCircle.Transparency = 1
+        FOVCircle.Visible      = false
+    end
+end)
+
+Track(RunService.RenderStepped:Connect(function()
+    if not FOVCircle then return end
+    local vp = Camera.ViewportSize
+    FOVCircle.Position = Vector2.new(vp.X / 2, vp.Y / 2)
+    FOVCircle.Radius   = PVP.FOV
+    FOVCircle.Visible  = PVP.Aimbot
+end))
+
+local function PickAimTarget()
+    local best, bestDist = nil, PVP.FOV
+    local vp     = Camera.ViewportSize
+    local center = Vector2.new(vp.X / 2, vp.Y / 2)
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LP and plr.Character then
+            local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
+            local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+            if hrp and hum and hum.Health > 0 then
+                local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+                if onScreen then
+                    local d = (Vector2.new(pos.X, pos.Y) - center).Magnitude
+                    if d <= bestDist then
+                        bestDist = d
+                        best     = plr
+                    end
+                end
+            end
+        end
+    end
+    return best
+end
+
+task.spawn(function()
+    while task.wait(0.2) do
+        if PVP.Aimbot then
+            PVP.Target = PickAimTarget()
+        end
+    end
+end)
+
+-- Hook __namecall để bắn tự dính (chỉ khi executor hỗ trợ)
+pcall(function()
+    if not (getrawmetatable and setreadonly and newcclosure and getnamecallmethod) then return end
+    local mt    = getrawmetatable(game)
+    local oldNC = mt.__namecall
+    if not oldNC then return end
+    setreadonly(mt, false)
+    mt.__namecall = newcclosure(function(self, ...)
+        local args   = { ... }
+        local method = getnamecallmethod()
+        if PVP.Aimbot and PVP.Target and method == "FireServer"
+           and typeof(self) == "Instance" and self:IsA("RemoteEvent") then
+            local tChar = PVP.Target.Character
+            local hrp   = tChar and tChar:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                for i, v in ipairs(args) do
+                    if typeof(v) == "Vector3" then args[i] = hrp.Position end
+                    if typeof(v) == "CFrame"  then args[i] = hrp.CFrame   end
+                end
+            end
+        end
+        return oldNC(self, unpack(args))
+    end)
+    setreadonly(mt, true)
+end)
+
+-- Phím tắt: L = aimbot, P = xóa mục tiêu
+Track(UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.L then
+        PVP.Aimbot = not PVP.Aimbot
+    elseif input.KeyCode == Enum.KeyCode.P then
+        PVP.Target = nil
+    end
+end))
+
+-- ── 5.3 WEBHOOK DISCORD ──
+local Webhook = { Enabled = false, Url = "" } -- Dán URL webhook của bạn vào đây
+
+local function SendWebhook(title, desc)
+    if not Webhook.Enabled or Webhook.Url == "" then return end
+    local req = request or http_request or (syn and syn.request)
+    if not req then return end
+    task.spawn(function()
+        pcall(function()
+            req({
+                Url = Webhook.Url,
+                Method = "POST",
+                Headers = { ["Content-Type"] = "application/json" },
+                Body = HttpService:JSONEncode({
+                    username = "Master Hub",
+                    embeds = {{
+                        title       = tostring(title),
+                        description = tostring(desc),
+                        color       = 16776960,
+                        fields      = {
+                            { name = "User",    value = LP.Name,             inline = true },
+                            { name = "PlaceId", value = tostring(PlaceId),   inline = true },
+                            { name = "JobId",   value = tostring(game.JobId), inline = true },
+                        },
+                    }},
+                }),
+            })
+        end)
+    end)
+end
+
+-- ── 5.4 SETTINGS / MISC (FIX BUG #9: khai báo Noclip rõ) ──
+local Misc = {
+    WalkWater  = true,
+    Speed      = false, SpeedValue = 50,
+    Jump       = false, JumpValue  = 50,
+    FullBright = false,
+    Noclip     = false,
+}
+
+local function ApplyWalkWater(on)
+    pcall(function()
+        local plane = workspace:FindFirstChild("Map")
+            and workspace.Map:FindFirstChild("WaterBase-Plane")
+        if plane then
+            plane.Size = on and Vector3.new(1000, 112, 1000)
+                or  Vector3.new(1000, 80, 1000)
+        end
+    end)
+end
+
+local OriginalLight = {
+    Brightness     = Lighting.Brightness,
+    FogEnd         = Lighting.FogEnd,
+    GlobalShadows  = Lighting.GlobalShadows,
+    Ambient        = Lighting.Ambient,
+    OutdoorAmbient = Lighting.OutdoorAmbient,
+}
+
+local function ApplyFullBright(on)
+    if on then
+        Lighting.Brightness     = 2
+        Lighting.FogEnd         = 9e9
+        Lighting.GlobalShadows  = false
+        Lighting.Ambient        = Color3.fromRGB(128, 128, 128)
+        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+    else
+        Lighting.Brightness     = OriginalLight.Brightness
+        Lighting.FogEnd         = OriginalLight.FogEnd
+        Lighting.GlobalShadows  = OriginalLight.GlobalShadows
+        Lighting.Ambient        = OriginalLight.Ambient
+        Lighting.OutdoorAmbient = OriginalLight.OutdoorAmbient
+    end
+end
+
+local function ApplySpeedJump()
+    local hum = GetHumanoid()
+    if not hum then return end
+    if Misc.Speed then hum.WalkSpeed = Misc.SpeedValue end
+    if Misc.Jump  then hum.JumpPower = Misc.JumpValue  end
+end
+
+task.spawn(function()
+    while task.wait(0.5) do
+        if Misc.Speed or Misc.Jump then pcall(ApplySpeedJump) end
+        if Misc.WalkWater then ApplyWalkWater(true) end
+    end
+end)
+
+Track(LP.CharacterAdded:Connect(function()
+    task.wait(1.2)
+    pcall(ApplySpeedJump)
+end))
+
+-- Redeem codes
+local CODE_LIST = {
+    "KITTGAMING", "ENYU_IS_PRO", "FUDD10", "BIGNEWS", "THEGREATACE",
+    "SUB2GAMERROBOT_EXP1", "STRAWHATMAINE", "SUB2OFFICIALNOOBIE",
+    "SUB2NOOBMASTER123", "SUB2DAIGROCK", "AXIORE", "TANTAIGAMING",
+    "JCWK", "FUDD10_V2", "SUB2FER999", "MAGICBUS", "STARCODEHEO",
+    "NOOB_REFUND", "SUB2GAMERROBOT_RESET1", "Sub2UncleKizaru",
+    "Bluxxy", "Sub2CaptainMaui", "SUB2UNCLEKIZARU",
+}
+
+local function RedeemAllCodes()
+    task.spawn(function()
+        local redeem = ReplicatedStorage:FindFirstChild("Remotes")
+            and ReplicatedStorage.Remotes:FindFirstChild("Redeem")
+        if not redeem then return end
+        for _, code in ipairs(CODE_LIST) do
+            pcall(function() redeem:InvokeServer(code) end)
+            task.wait(0.25)
+        end
+        SendWebhook("Codes", "Đã redeem " .. #CODE_LIST .. " codes")
+    end)
+end
+
+-- ── 5.5 UI WIRING ──
+local Window = UILibrary:CreateWindow({
+    Title    = "BLOX FRUITS MASTER HUB",
+    SubTitle = "LuaMaster AI | V1.1 Fixed",
+})
+
+-- TAB 1: FARMING
+local TabFarm = Window:MakeTab({"Farming", "⚔️"})
+local SecFarm = TabFarm:AddSection({"Auto Farm Level"})
+SecFarm:AddToggle({
+    Name = "Auto Farm Level",
+    Default = false,
+    Callback = function(v) AutoFarmLevel.Enabled = v end,
+})
+SecFarm:AddDropdown({
+    Name = "Chế độ farm",
+    Options = {"Quest", "Nearest", "Normal"},
+    Default = "Quest",
+    Callback = function(v) AutoFarmLevel.Mode = v end,
+})
+SecFarm:AddDropdown({
+    Name = "Vũ khí",
+    Options = {"Melee", "Sword", "Gun", "Fruit"},
+    Default = "Melee",
+    Callback = function(v) AutoFarmLevel.SelectWeapon = v end,
+})
+
+local SecFarm2 = TabFarm:AddSection({"Farm chuyên sâu"})
+SecFarm2:AddToggle({
+    Name = "Mob Aura (quái gần)",
+    Default = false,
+    Callback = function(v) MobAura.Enabled = v end,
+})
+SecFarm2:AddToggle({
+    Name = "Auto Factory (Core)",
+    Default = false,
+    Callback = function(v) AutoFactory.Enabled = v end,
+})
+SecFarm2:AddToggle({
+    Name = "Auto Bone (Xương)",
+    Default = false,
+    Callback = function(v) AutoBoneFarm.Enabled = v end,
+})
+SecFarm2:AddToggle({
+    Name = "Auto Cake Prince",
+    Default = false,
+    Callback = function(v) AutoCakePrince.Enabled = v end,
+})
+SecFarm2:AddToggle({
+    Name = "Auto Boss chọn trước",
+    Default = false,
+    Callback = function(v) AutoFarmBoss.Enabled = v end,
+})
+SecFarm2:AddDropdown({
+    Name = "Chọn Boss",
+    Options = {
+        "The Gorilla King", "Swan", "Magma Admiral", "Don Swan", "Darkbeard", "Order",
+        "Stone", "Island Empress", "Captain Elephant", "Beautiful Pirate", "Cake Queen",
+        "Dough King", "Tyrant of the Skies", "Soul Reaper", "Longma",
+    },
+    Default = "The Gorilla King",
+    Callback = function(v) AutoFarmBoss.SelectedBoss = v end,
+})
+SecFarm2:AddDropdown({
+    Name = "Chọn Material",
+    Options = {
+        "Leather", "Scrap Metal", "Magma Ore", "Angel Wings", "Ectoplasm",
+        "Mystic Droplet", "Conjured Cocoa", "Dragon Scale", "Gunpowder", "Fish Tail", "Mini Tusk",
+    },
+    Default = "Leather",
+    Callback = function(v) AutoFarmMaterial.SelectedMaterial = v end,
+})
+SecFarm2:AddToggle({
+    Name = "Farm Material",
+    Default = false,
+    Callback = function(v) AutoFarmMaterial.Enabled = v end,
+})
+
+-- FIX BUG #8: Thêm UI toggle cho HopIfNotFound
+local SecBossExtra = TabFarm:AddSection({"Tùy chọn Boss"})
+SecBossExtra:AddToggle({
+    Name = "Hop server nếu không có Boss",
+    Default = false,
+    Callback = function(v) AutoFarmBoss.HopIfNotFound = v end,
+})
+
+-- TAB 2: SEA & RAID
+local TabSea = Window:MakeTab({"Sea & Raid", "🌊"})
+local SecSea = TabSea:AddSection({"Sea Event"})
+SecSea:AddToggle({
+    Name = "Auto Sea Beast",
+    Default = false,
+    Callback = function(v) AutoSeaBeast.Enabled = v end,
+})
+SecSea:AddToggle({
+    Name = "Auto Pirate Raid",
+    Default = false,
+    Callback = function(v) AutoPirateRaid.Enabled = v end,
+})
+SecSea:AddToggle({
+    Name = "Auto Law Raid",
+    Default = false,
+    Callback = function(v) AutoLawRaid.Enabled = v end,
+})
+SecSea:AddToggle({
+    Name = "Auto mua chip Law",
+    Default = true,
+    Callback = function(v) AutoLawRaid.AutoBuyChip = v end,
+})
+SecSea:AddToggle({
+    Name = "Auto Leviathan (Find + Attack)",
+    Default = false,
+    Callback = function(v)
+        AutoLeviathan.Enabled    = v
+        AutoLeviathan.AutoFind   = v
+        AutoLeviathan.AutoAttack = v
+    end,
+})
+
+local SecIsland = TabSea:AddSection({"Đảo sự kiện"})
+SecIsland:AddToggle({
+    Name = "Tìm Mirage Island",
+    Default = false,
+    Callback = function(v) AutoFindMirage.Enabled = v end,
+})
+SecIsland:AddToggle({
+    Name = "Tìm Kitsune Island",
+    Default = false,
+    Callback = function(v) AutoFindKitsune.Enabled = v end,
+})
+SecIsland:AddToggle({
+    Name = "Hop tìm Full Moon",
+    Default = false,
+    Callback = function(v) AutoFindFullMoon.Enabled = v end,
+})
+SecIsland:AddToggle({
+    Name = "Auto Dungeon/Raid",
+    Default = false,
+    Callback = function(v) AutoDungeon.Enabled = v end,
+})
+SecIsland:AddToggle({
+    Name = "Auto Elite Hunter",
+    Default = false,
+    Callback = function(v) AutoEliteHunter.Enabled = v end,
+})
+
+-- TAB 3: RACE & ITEMS
+local TabRace = Window:MakeTab({"Race & Items", "🧬"})
+local SecRace = TabRace:AddSection({"Nâng cấp tộc"})
+SecRace:AddToggle({
+    Name = "Auto Race V2",
+    Default = false,
+    Callback = function(v) AutoRaceV2.Enabled = v end,
+})
+SecRace:AddToggle({
+    Name = "Auto Race V3",
+    Default = false,
+    Callback = function(v) AutoRaceV3.Enabled = v end,
+})
+SecRace:AddToggle({
+    Name = "Auto Race V4",
+    Default = false,
+    Callback = function(v) AutoRaceV4.Enabled = v end,
+})
+SecRace:AddToggle({
+    Name = "Auto Draco Trial",
+    Default = false,
+    Callback = function(v) AutoDracoTrial.Enabled = v end,
+})
+
+local SecItems = TabRace:AddSection({"Vật phẩm huyền thoại"})
+SecItems:AddToggle({
+    Name = "Auto Yama",
+    Default = false,
+    Callback = function(v) AutoGetYama.Enabled = v end,
+})
+SecItems:AddToggle({
+    Name = "Auto Tushita",
+    Default = false,
+    Callback = function(v) AutoGetTushita.Enabled = v end,
+})
+SecItems:AddToggle({
+    Name = "Auto Holy Torch",
+    Default = false,
+    Callback = function(v) AutoHolyTorch.Enabled = v end,
+})
+SecItems:AddToggle({
+    Name = "Auto CDK",
+    Default = false,
+    Callback = function(v) AutoCDK.Enabled = v end,
+})
+SecItems:AddToggle({
+    Name = "Random trái",
+    Default = false,
+    Callback = function(v) AutoRandomFruit.Enabled = v end,
+})
+SecItems:AddToggle({
+    Name = "Cất trái vào kho",
+    Default = false,
+    Callback = function(v) AutoStoreFruit.Enabled = v end,
+})
+
+-- TAB 4: ESP
+local TabESP = Window:MakeTab({"ESP", "👁️"})
+local SecESP = TabESP:AddSection({"ESP thị giác"})
+SecESP:AddToggle({
+    Name = "ESP người chơi",
+    Default = false,
+    Callback = function(v) ESPState.Players = v end,
+})
+SecESP:AddToggle({
+    Name = "ESP rương",
+    Default = false,
+    Callback = function(v) ESPState.Chests = v end,
+})
+SecESP:AddToggle({
+    Name = "ESP trái ác quỷ",
+    Default = false,
+    Callback = function(v) ESPState.Fruits = v end,
+})
+SecESP:AddToggle({
+    Name = "ESP hoa",
+    Default = false,
+    Callback = function(v) ESPState.Flowers = v end,
+})
+SecESP:AddToggle({
+    Name = "ESP đảo",
+    Default = false,
+    Callback = function(v) ESPState.Islands = v end,
+})
+SecESP:AddToggle({
+    Name = "ESP Mirage",
+    Default = false,
+    Callback = function(v) ESPState.Mirage = v end,
+})
+SecESP:AddToggle({
+    Name = "ESP Kitsune",
+    Default = false,
+    Callback = function(v) ESPState.Kitsune = v end,
+})
+SecESP:AddToggle({
+    Name = "ESP bánh răng",
+    Default = false,
+    Callback = function(v) ESPState.Gears = v end,
+})
+
+-- TAB 5: PVP
+local TabPVP = Window:MakeTab({"PVP", "🎯"})
+local SecPVP = TabPVP:AddSection({"Aimbot"})
+SecPVP:AddToggle({
+    Name = "Auto Aimbot (phím L)",
+    Default = false,
+    Callback = function(v)
+        PVP.Aimbot = v
+        if not v then PVP.Target = nil end
+    end,
+})
+SecPVP:AddSlider({
+    Name = "FOV",
+    Min = 20, Max = 400, Default = 80,
+    Callback = function(v) PVP.FOV = v end,
+})
+
+-- TAB 6: SETTINGS
+local TabSet = Window:MakeTab({"Settings", "⚙️"})
+local SecMisc = TabSet:AddSection({"Nhân vật"})
+SecMisc:AddToggle({
+    Name = "Đi trên nước",
+    Default = true,
+    Callback = function(v)
+        Misc.WalkWater = v
+        ApplyWalkWater(v)
+    end,
+})
+SecMisc:AddToggle({
+    Name = "Noclip",
+    Default = false,
+    Callback = function(v)
+        Misc.Noclip = v
+        EnableNoclip(v)
+    end,
+})
+SecMisc:AddToggle({
+    Name = "Speed hack",
+    Default = false,
+    Callback = function(v)
+        Misc.Speed = v
+        pcall(ApplySpeedJump)
+    end,
+})
+SecMisc:AddSlider({
+    Name = "WalkSpeed",
+    Min = 16, Max = 500, Default = 50,
+    Callback = function(v)
+        Misc.SpeedValue = v
+        pcall(ApplySpeedJump)
+    end,
+})
+SecMisc:AddToggle({
+    Name = "Jump hack",
+    Default = false,
+    Callback = function(v)
+        Misc.Jump = v
+        pcall(ApplySpeedJump)
+    end,
+})
+SecMisc:AddToggle({
+    Name = "FullBright",
+    Default = false,
+    Callback = function(v)
+        Misc.FullBright = v
+        ApplyFullBright(v)
+    end,
+})
+
+local SecShop = TabSet:AddSection({"Shop nhanh"})
+SecShop:AddButton({
+    Name = "Mua Buso Haki",
+    Callback = function() InvokeServer("BuyHaki", "Buso") end,
+})
+SecShop:AddButton({
+    Name = "Mua Geppo",
+    Callback = function() InvokeServer("BuyHaki", "Geppo") end,
+})
+-- FIX BUG #4: sửa typo "name" → "Name"
+SecShop:AddButton({
+    Name = "Mua Soru",
+    Callback = function() InvokeServer("BuyHaki", "Soru") end,
+})
+SecShop:AddButton({
+    Name = "Mua Observation",
+    Callback = function() InvokeServer("KenTalk", "Buy") end,
+})
+SecShop:AddButton({
+    Name = "Mua Superhuman",
+    Callback = function() InvokeServer("BuySuperhuman") end,
+})
+SecShop:AddButton({
+    Name = "Mua Death Step",
+    Callback = function() InvokeServer("BuyDeathStep") end,
+})
+SecShop:AddButton({
+    Name = "Mua God Human",
+    Callback = function() InvokeServer("BuyGodhuman") end,
+})
+SecShop:AddButton({
+    Name = "Mua Sanguine Art",
+    Callback = function()
+        InvokeServer("BuySanguineArt", true)
+        InvokeServer("BuySanguineArt")
+    end,
+})
+
+local SecServer = TabSet:AddSection({"Server & Codes"})
+SecServer:AddButton({
+    Name = "Redeem toàn bộ code",
+    Callback = RedeemAllCodes,
+})
+SecServer:AddButton({
+    Name = "Server hop (ít người)",
+    Callback = ServerHop,
+})
+SecServer:AddButton({
+    Name = "Rejoin server",
+    Callback = Rejoin,
+})
+SecServer:AddToggle({
+    Name = "Bật Webhook Discord",
+    Default = false,
+    Callback = function(v) Webhook.Enabled = v end,
+})
+
+-- ── 5.6 INIT ──
+ApplyWalkWater(Misc.WalkWater)
+
+-- Phím tắt ẩn/hiện UI
+Track(UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        Window.mainFrame.Visible = not Window.mainFrame.Visible
+    end
+end))
+
+pcall(function()
+    StarterGui:SetCore("SendNotification", {
+        Title    = "Master Hub V1.1",
+        Text     = "Nạp thành công | RightShift: ẩn/hiện UI | L: aimbot",
+        Duration = 6,
+    })
+end)
+
+SendWebhook("Session", "Script khởi động tại Place " .. PlaceId)
+
+print("════════════════════════════════════════════")
+print("  🌊 BLOX FRUITS MASTER HUB V1.1 - HOÀN TẤT")
+print("  ✅ Part 1: Core + UI + Quest DB")
+print("  ✅ Part 2: Farming (Level/Material/Boss/Mob)")
+print("  ✅ Part 3: Sea/Raid/Dungeon/Leviathan/Mirage")
+print("  ✅ Part 4: Race V2-V4 + Draco + CDK/Yama/Tushita")
+print("  ✅ Part 5: ESP/PVP/Webhook/Settings/UI/Init")
+print("")
+print("  🎮 Hotkey:")
+print("     RightShift → Ẩn/Hiện UI")
+print("     L          → Toggle Aimbot")
+print("     P          → Clear Aimbot Target")
+print("")
+print("  📝 Đã fix 10 bug:")
+print("     Track, LP, AutoCDK, AutoHolyTorch, name typo,")
+print("     Misc.Noclip, Quest world, FindMonster fallback,")
+print("     HopIfNotFound UI, ServerHop pcall")
+print("════════════════════════════════════════════")
