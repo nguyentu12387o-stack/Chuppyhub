@@ -1,0 +1,2833 @@
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- 🐾 CHUPPY HUB V2 — PHẦN 1/10: UI LIBRARY
+-- ═══════════════════════════════════════════════════════════════════════════════
+loadstring([==[
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [1.0] SERVICES
+-- ═══════════════════════════════════════════════════════════════════════════════
+local Svc = {
+    Players         = game:GetService("Players"),
+    RS              = game:GetService("ReplicatedStorage"),
+    RunService      = game:GetService("RunService"),
+    UIS             = game:GetService("UserInputService"),
+    TweenService    = game:GetService("TweenService"),
+    CoreGui         = game:GetService("CoreGui"),
+    HttpService     = game:GetService("HttpService"),
+    Lighting        = game:GetService("Lighting"),
+    CollectionService = game:GetService("CollectionService"),
+    VIM             = game:GetService("VirtualInputManager"),
+    VU              = game:GetService("VirtualUser"),
+    TS              = game:GetService("TeleportService"),
+    StarterGui      = game:GetService("StarterGui"),
+}
+local LP = Svc.Players.LocalPlayer
+getgenv().ChuppySvc = Svc
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [1.1] THEME
+-- ═══════════════════════════════════════════════════════════════════════════════
+local Theme = {
+    Background        = Color3.fromRGB(12, 13, 18),
+    Surface           = Color3.fromRGB(20, 22, 30),
+    Surface2          = Color3.fromRGB(28, 30, 40),
+    Surface3          = Color3.fromRGB(36, 38, 50),
+    SurfaceHover      = Color3.fromRGB(42, 45, 58),
+    SurfaceActive     = Color3.fromRGB(50, 53, 68),
+    SurfaceDeep       = Color3.fromRGB(8, 9, 13),
+    Border            = Color3.fromRGB(40, 42, 55),
+    BorderLight       = Color3.fromRGB(55, 58, 75),
+    BorderFocus       = Color3.fromRGB(80, 90, 120),
+    BorderGlow        = Color3.fromRGB(0, 180, 255),
+    Accent            = Color3.fromRGB(0, 190, 255),
+    AccentDim         = Color3.fromRGB(0, 90, 130),
+    AccentDark        = Color3.fromRGB(0, 60, 90),
+    AccentGlow        = Color3.fromRGB(80, 220, 255),
+    AccentSoft        = Color3.fromRGB(0, 140, 190),
+    Success           = Color3.fromRGB(0, 220, 130),
+    SuccessDim        = Color3.fromRGB(0, 90, 55),
+    SuccessDark       = Color3.fromRGB(0, 60, 35),
+    SuccessGlow       = Color3.fromRGB(80, 255, 170),
+    Warning           = Color3.fromRGB(255, 180, 50),
+    WarningDim        = Color3.fromRGB(120, 80, 20),
+    WarningDark       = Color3.fromRGB(80, 50, 10),
+    WarningGlow       = Color3.fromRGB(255, 210, 120),
+    Danger            = Color3.fromRGB(255, 75, 95),
+    DangerDim         = Color3.fromRGB(120, 30, 40),
+    DangerDark        = Color3.fromRGB(80, 20, 28),
+    DangerGlow        = Color3.fromRGB(255, 130, 150),
+    Info              = Color3.fromRGB(100, 160, 255),
+    InfoDim           = Color3.fromRGB(50, 80, 130),
+    Text              = Color3.fromRGB(240, 242, 248),
+    TextBright        = Color3.fromRGB(255, 255, 255),
+    TextDim           = Color3.fromRGB(150, 158, 175),
+    TextMuted         = Color3.fromRGB(90, 96, 115),
+    TextInactive      = Color3.fromRGB(60, 65, 80),
+    Radius            = UDim.new(0, 8),
+    RadiusSmall       = UDim.new(0, 6),
+    RadiusTiny        = UDim.new(0, 4),
+    RadiusLarge       = UDim.new(0, 12),
+    RadiusXL          = UDim.new(0, 16),
+    RadiusFull        = UDim.new(1, 0),
+    AnimInstant       = TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+    AnimFast          = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+    AnimNormal        = TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+    AnimSmooth        = TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+    AnimSlow          = TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+    AnimSpring        = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+    AnimBounce        = TweenInfo.new(0.6, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out),
+    FontBlack         = Enum.Font.GothamBlack,
+    FontBold          = Enum.Font.GothamBold,
+    FontMedium        = Enum.Font.GothamMedium,
+    FontRegular       = Enum.Font.Gotham,
+    FontMono          = Enum.Font.Code,
+    SizeTiny          = 9,
+    SizeSmall         = 10,
+    SizeNormal        = 11,
+    SizeMedium        = 12,
+    SizeLarge         = 13,
+    SizeTitle         = 14,
+    SizeHeader        = 16,
+    SizeBig           = 18,
+    SizeHuge          = 22,
+}
+getgenv().ChuppyTheme = Theme
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [1.2] HELPERS
+-- ═══════════════════════════════════════════════════════════════════════════════
+local U = {}
+
+function U.New(class, props, parent)
+    local obj = Instance.new(class)
+    for k, v in pairs(props or {}) do
+        if k ~= "Parent" then pcall(function() obj[k] = v end) end
+    end
+    if parent then obj.Parent = parent end
+    return obj
+end
+
+function U.Corner(radius, parent)
+    return U.New("UICorner", { CornerRadius = radius or Theme.Radius }, parent)
+end
+
+function U.Stroke(color, thickness, transparency, parent)
+    return U.New("UIStroke", {
+        Color = color or Theme.Border, Thickness = thickness or 1,
+        Transparency = transparency or 0, ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+    }, parent)
+end
+
+function U.Padding(top, bottom, left, right, parent)
+    return U.New("UIPadding", {
+        PaddingTop = UDim.new(0, top or 0), PaddingBottom = UDim.new(0, bottom or 0),
+        PaddingLeft = UDim.new(0, left or 0), PaddingRight = UDim.new(0, right or 0),
+    }, parent)
+end
+
+function U.Tween(obj, info, props)
+    if not obj or not obj.Parent then return nil end
+    local t = Svc.TweenService:Create(obj, info or Theme.AnimNormal, props)
+    t:Play()
+    return t
+end
+
+function U.LerpColor(a, b, alpha)
+    return a:Lerp(b, math.clamp(alpha, 0, 1))
+end
+
+function U.TextSize(font, size, text)
+    local label = Instance.new("TextLabel")
+    label.TextSize = size; label.Font = font; label.Text = text or ""
+    local bounds = label.TextBounds
+    label:Destroy()
+    return bounds
+end
+
+function U.FormatNumber(n)
+    local formatted = tostring(math.floor(tonumber(n) or 0))
+    local k
+    while true do
+        formatted, k = string.gsub(formatted, "^(-?%d+)(%d%d%d)", "%1,%2")
+        if k == 0 then break end
+    end
+    return formatted
+end
+
+function U.FormatTime(seconds)
+    seconds = math.floor(seconds)
+    local h = math.floor(seconds / 3600)
+    local m = math.floor((seconds % 3600) / 60)
+    local s = seconds % 60
+    if h > 0 then return string.format("%dh %dm %ds", h, m, s) end
+    if m > 0 then return string.format("%dm %ds", m, s) end
+    return string.format("%ds", s)
+end
+
+getgenv().ChuppyU = U
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [1.3] ANIMATION
+-- ═══════════════════════════════════════════════════════════════════════════════
+local Anim = {}
+local activeGlows = {}
+
+function Anim.Pulse(obj, scale, duration)
+    if not obj or not obj.Parent then return end
+    scale = scale or 1.05; duration = duration or 0.3
+    local origSize = obj.Size
+    local info = TweenInfo.new(duration / 2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local t = Svc.TweenService:Create(obj, info, {
+        Size = UDim2.new(origSize.X.Scale * scale, origSize.X.Offset * scale,
+                        origSize.Y.Scale * scale, origSize.Y.Offset * scale),
+    })
+    t:Play()
+    t.Completed:Connect(function()
+        if obj and obj.Parent then
+            Svc.TweenService:Create(obj, info, { Size = origSize }):Play()
+        end
+    end)
+end
+
+function Anim.Ripple(parent, x, y, color)
+    if not parent or not parent.Parent then return end
+    color = color or Theme.Accent
+    local ripple = U.New("Frame", {
+        Name = "RippleEffect", AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(0, x, 0, y), Size = UDim2.new(0, 0, 0, 0),
+        BackgroundColor3 = color, BackgroundTransparency = 0.7, BorderSizePixel = 0, ZIndex = 10,
+    }, parent)
+    U.Corner(Theme.RadiusFull, ripple)
+    local maxSize = math.max(parent.AbsoluteSize.X, parent.AbsoluteSize.Y) * 2
+    U.Tween(ripple, TweenInfo.new(0.6, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, maxSize, 0, maxSize), BackgroundTransparency = 1,
+    })
+    task.delay(0.7, function() if ripple and ripple.Parent then ripple:Destroy() end end)
+end
+
+function Anim.StartGlow(obj, stroke, baseColor, glowColor)
+    if not obj or not obj.Parent or not stroke then return end
+    if activeGlows[obj] then activeGlows[obj]:Disconnect(); activeGlows[obj] = nil end
+    baseColor = baseColor or Theme.Border; glowColor = glowColor or Theme.AccentGlow
+    local startTime = tick(); local period = 1.5
+    activeGlows[obj] = Svc.RunService.Heartbeat:Connect(function()
+        if not obj or not obj.Parent or not stroke or not stroke.Parent then
+            if activeGlows[obj] then activeGlows[obj]:Disconnect(); activeGlows[obj] = nil end
+            return
+        end
+        local t = ((tick() - startTime) % period) / period
+        local alpha = (math.sin(t * math.pi * 2) + 1) / 2
+        alpha = 0.3 + alpha * 0.5
+        stroke.Color = U.LerpColor(baseColor, glowColor, alpha)
+        stroke.Transparency = 1 - alpha
+    end)
+end
+
+function Anim.StopGlow(obj)
+    if activeGlows[obj] then activeGlows[obj]:Disconnect(); activeGlows[obj] = nil end
+end
+
+function Anim.Shake(obj, intensity, duration)
+    if not obj or not obj.Parent then return end
+    intensity = intensity or 5; duration = duration or 0.3
+    local origPos = obj.Position; local startTime = tick(); local conn
+    conn = Svc.RunService.RenderStepped:Connect(function()
+        local elapsed = tick() - startTime
+        if elapsed >= duration or not obj or not obj.Parent then
+            if obj and obj.Parent then obj.Position = origPos end
+            if conn then conn:Disconnect() end
+            return
+        end
+        local progress = 1 - (elapsed / duration)
+        obj.Position = UDim2.new(origPos.X.Scale, origPos.X.Offset + math.random(-intensity, intensity) * progress,
+                                origPos.Y.Scale, origPos.Y.Offset + math.random(-intensity, intensity) * progress)
+    end)
+end
+
+function Anim.RotateChevron(chevron, toAngle, duration)
+    if not chevron or not chevron.Parent then return end
+    duration = duration or 0.25
+    U.Tween(chevron, TweenInfo.new(duration, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Rotation = toAngle })
+end
+
+getgenv().ChuppyAnim = Anim
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [1.4] NOTIFICATION
+-- ═══════════════════════════════════════════════════════════════════════════════
+local Notification = {}
+local notiStack, notiHolder = {}, nil
+local NOTI_W, NOTI_H, NOTI_GAP = 300, 68, 8
+
+local NOTI_ICONS = { info = "ℹ", success = "✓", warning = "⚠", danger = "✕", loading = "◌" }
+local NOTI_COLORS = {
+    info = function() return Theme.Info end,
+    success = function() return Theme.Success end,
+    warning = function() return Theme.Warning end,
+    danger = function() return Theme.Danger end,
+    loading = function() return Theme.Accent end,
+}
+
+local function InitNotiHolder(gui)
+    if notiHolder and notiHolder.Parent then return end
+    notiHolder = U.New("Frame", {
+        Name = "NotificationHolder", Size = UDim2.new(0, NOTI_W, 0, 0),
+        Position = UDim2.new(0, 12, 0, 60), BackgroundTransparency = 1, ZIndex = 9999,
+    }, gui)
+end
+
+local function ReorganizeNoti()
+    local yPos = 0
+    for _, noti in ipairs(notiStack) do
+        if noti.frame and noti.frame.Parent then
+            U.Tween(noti.frame, Theme.AnimNormal, { Position = UDim2.new(0, 0, 0, yPos) })
+            yPos = yPos + NOTI_H + NOTI_GAP
+        end
+    end
+end
+
+local function DismissNoti(noti)
+    if not noti or not noti.frame or not noti.frame.Parent then return end
+    for i, n in ipairs(notiStack) do
+        if n == noti then table.remove(notiStack, i); break end
+    end
+    if noti.timerConn then pcall(function() noti.timerConn:Disconnect() end) end
+    local frame = noti.frame
+    U.Tween(frame, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+        Position = UDim2.new(0, -NOTI_W - 20, 0, frame.Position.Y.Offset), BackgroundTransparency = 1,
+    })
+    for _, desc in ipairs(frame:GetDescendants()) do
+        if desc:IsA("TextLabel") then U.Tween(desc, Theme.AnimFast, { TextTransparency = 1 })
+        elseif desc:IsA("TextButton") then U.Tween(desc, Theme.AnimFast, { TextTransparency = 1, BackgroundTransparency = 1 })
+        elseif desc:IsA("Frame") then U.Tween(desc, Theme.AnimFast, { BackgroundTransparency = 1 })
+        elseif desc:IsA("UIStroke") then U.Tween(desc, Theme.AnimFast, { Transparency = 1 }) end
+    end
+    task.delay(0.3, function()
+        if frame and frame.Parent then frame:Destroy() end
+        ReorganizeNoti()
+    end)
+end
+
+function Notification.Show(config)
+    if not notiHolder or not notiHolder.Parent then return nil end
+    config = config or {}
+    local nType = config.Type or "info"
+    local title = config.Title or "Thông báo"
+    local desc = config.Desc or config.Text or ""
+    local dur = config.Duration or 4
+    local icon = config.Icon or NOTI_ICONS[nType] or "ℹ"
+    local color = NOTI_COLORS[nType] and NOTI_COLORS[nType]() or Theme.Info
+
+    local frame = U.New("Frame", {
+        Name = "Noti_" .. tostring(math.random(10000, 99999)),
+        Size = UDim2.new(0, NOTI_W, 0, NOTI_H),
+        Position = UDim2.new(0, -NOTI_W - 20, 0, 0),
+        BackgroundColor3 = Theme.Surface, BackgroundTransparency = 1, BorderSizePixel = 0, ZIndex = 9999,
+    }, notiHolder)
+    U.Corner(Theme.RadiusLarge, frame)
+    local stroke = U.Stroke(Theme.Border, 1, 1, frame)
+
+    local accent = U.New("Frame", {
+        Name = "AccentBar", Size = UDim2.new(0, 3, 1, 0),
+        BackgroundColor3 = color, BackgroundTransparency = 1, BorderSizePixel = 0, ZIndex = 10000,
+    }, frame)
+    U.Corner(Theme.RadiusTiny, accent)
+
+    local iconF = U.New("Frame", {
+        Name = "IconFrame", Size = UDim2.new(0, 36, 0, 36),
+        Position = UDim2.new(0, 16, 0.5, -18),
+        BackgroundColor3 = color, BackgroundTransparency = 1, BorderSizePixel = 0, ZIndex = 10000,
+    }, frame)
+    U.Corner(Theme.RadiusFull, iconF)
+    U.New("TextLabel", {
+        Name = "Icon", Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1,
+        Text = icon, Font = Theme.FontBlack, TextSize = 16,
+        TextColor3 = Theme.Background, TextTransparency = 1, ZIndex = 10001,
+    }, iconF)
+
+    U.New("TextLabel", {
+        Name = "Title", Size = UDim2.new(1, -80, 0, 18), Position = UDim2.new(0, 62, 0, 14),
+        BackgroundTransparency = 1, Text = title, Font = Theme.FontBold, TextSize = Theme.SizeMedium,
+        TextColor3 = color, TextTransparency = 1, TextXAlignment = Enum.TextXAlignment.Left,
+        TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 10000,
+    }, frame)
+
+    U.New("TextLabel", {
+        Name = "Desc", Size = UDim2.new(1, -80, 0, 26), Position = UDim2.new(0, 62, 0, 32),
+        BackgroundTransparency = 1, Text = desc, Font = Theme.FontRegular, TextSize = Theme.SizeNormal,
+        TextColor3 = Theme.TextDim, TextTransparency = 1, TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true, TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 10000,
+    }, frame)
+
+    local progBar, progFill
+    if dur > 0 then
+        progBar = U.New("Frame", {
+            Name = "ProgressBar", Size = UDim2.new(1, -20, 0, 2), Position = UDim2.new(0, 10, 1, -4),
+            BackgroundColor3 = Theme.SurfaceDeep, BackgroundTransparency = 1, BorderSizePixel = 0, ZIndex = 10000,
+        }, frame)
+        U.Corner(Theme.RadiusTiny, progBar)
+        progFill = U.New("Frame", {
+            Name = "Fill", Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = color,
+            BackgroundTransparency = 1, BorderSizePixel = 0, ZIndex = 10001,
+        }, progBar)
+        U.Corner(Theme.RadiusTiny, progFill)
+    end
+
+    local click = U.New("TextButton", {
+        Name = "ClickArea", Size = UDim2.new(1, 0, 1, 0),
+        BackgroundTransparency = 1, Text = "", AutoButtonColor = false, ZIndex = 10002,
+    }, frame)
+
+    local noti = { frame = frame, type = nType, timerConn = nil }
+    table.insert(notiStack, noti)
+
+    U.Tween(frame, Theme.AnimSmooth, { Position = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0 })
+    task.delay(0.05, function()
+        if not frame or not frame.Parent then return end
+        U.Tween(frame.AccentBar, Theme.AnimNormal, { BackgroundTransparency = 0 })
+        U.Tween(frame.IconFrame, Theme.AnimNormal, { BackgroundTransparency = 0 })
+        U.Tween(frame.IconFrame.Icon, Theme.AnimNormal, { TextTransparency = 0 })
+        U.Tween(frame.Title, Theme.AnimNormal, { TextTransparency = 0 })
+        U.Tween(frame.Desc, Theme.AnimNormal, { TextTransparency = 0 })
+        U.Tween(stroke, Theme.AnimNormal, { Transparency = 0 })
+        if progBar then
+            U.Tween(progBar, Theme.AnimNormal, { BackgroundTransparency = 0.3 })
+            U.Tween(progFill, Theme.AnimNormal, { BackgroundTransparency = 0 })
+        end
+    end)
+
+    if dur > 0 then
+        local startTime = tick()
+        local conn
+        conn = Svc.RunService.Heartbeat:Connect(function()
+            if not frame or not frame.Parent then
+                if conn then conn:Disconnect() end; return
+            end
+            local elapsed = tick() - startTime
+            local prog = math.clamp(1 - elapsed / dur, 0, 1)
+            if progFill and progFill.Parent then
+                progFill.Size = UDim2.new(prog, 0, 1, 0)
+                if prog < 0.25 then progFill.BackgroundColor3 = Theme.Danger
+                elseif prog < 0.5 then progFill.BackgroundColor3 = Theme.Warning
+                else progFill.BackgroundColor3 = color end
+            end
+            if elapsed >= dur then
+                if conn then conn:Disconnect() end
+                DismissNoti(noti)
+            end
+        end)
+        noti.timerConn = conn
+    end
+
+    click.MouseButton1Click:Connect(function() DismissNoti(noti) end)
+    ReorganizeNoti()
+    return noti
+end
+
+function Notification.Info(t, d, dur) return Notification.Show({ Type = "info", Title = t, Desc = d, Duration = dur }) end
+function Notification.Success(t, d, dur) return Notification.Show({ Type = "success", Title = t, Desc = d, Duration = dur }) end
+function Notification.Warning(t, d, dur) return Notification.Show({ Type = "warning", Title = t, Desc = d, Duration = dur }) end
+function Notification.Danger(t, d, dur) return Notification.Show({ Type = "danger", Title = t, Desc = d, Duration = dur }) end
+function Notification.Loading(t, d) return Notification.Show({ Type = "loading", Title = t, Desc = d, Duration = 0 }) end
+
+getgenv().ChuppyNotification = Notification
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [1.5] TOOLTIP
+-- ═══════════════════════════════════════════════════════════════════════════════
+local Tooltip = {}
+local tFrame, tVisible = nil, false
+
+local function InitTooltip(gui)
+    if tFrame and tFrame.Parent then return end
+    tFrame = U.New("Frame", {
+        Name = "TooltipFrame", Size = UDim2.new(0, 0, 0, 26),
+        Position = UDim2.new(0, 0, 0, 0), BackgroundColor3 = Theme.Surface3,
+        BackgroundTransparency = 1, BorderSizePixel = 0, ZIndex = 99999, Visible = false,
+    }, gui)
+    U.Corner(Theme.RadiusSmall, tFrame)
+    U.Stroke(Theme.BorderLight, 1, 1, tFrame)
+    U.New("TextLabel", {
+        Name = "Label", Size = UDim2.new(1, -16, 1, 0), Position = UDim2.new(0, 8, 0, 0),
+        BackgroundTransparency = 1, Text = "", Font = Theme.FontMedium, TextSize = Theme.SizeSmall,
+        TextColor3 = Theme.Text, TextTransparency = 1,
+        TextXAlignment = Enum.TextXAlignment.Center, TextYAlignment = Enum.TextYAlignment.Center, ZIndex = 100000,
+    }, tFrame)
+end
+
+function Tooltip.Show(text, x, y)
+    if not tFrame or not tFrame.Parent or not text or text == "" then return end
+    local label = tFrame:FindFirstChild("Label")
+    if not label then return end
+    local bounds = U.TextSize(Theme.FontMedium, Theme.SizeSmall, text)
+    local w = math.max(50, bounds.X + 20); local h = 26
+    label.Text = text
+    tFrame.Size = UDim2.new(0, w, 0, h)
+    tFrame.Position = UDim2.new(0, x - w / 2, 0, y)
+    if not tVisible then
+        tVisible = true
+        tFrame.Visible = true
+        tFrame.BackgroundTransparency = 0.05
+        U.Tween(label, Theme.AnimFast, { TextTransparency = 0 })
+    end
+end
+
+function Tooltip.Hide()
+    if not tFrame or not tFrame.Parent then return end
+    tVisible = false
+    local label = tFrame:FindFirstChild("Label")
+    if label then U.Tween(label, Theme.AnimFast, { TextTransparency = 1 }) end
+    U.Tween(tFrame, Theme.AnimFast, { BackgroundTransparency = 1 })
+    task.delay(0.2, function()
+        if tFrame and tFrame.Parent and not tVisible then tFrame.Visible = false end
+    end)
+end
+
+function Tooltip.Attach(element, text)
+    if not element or not text then return end
+    local hoverTime, isHovering = 0, false
+    element.MouseEnter:Connect(function()
+        isHovering = true; hoverTime = tick()
+        task.delay(0.4, function()
+            if isHovering and (tick() - hoverTime) >= 0.35 then
+                local pos, size = element.AbsolutePosition, element.AbsoluteSize
+                Tooltip.Show(text, pos.X + size.X / 2, pos.Y - 32)
+            end
+        end)
+    end)
+    element.MouseLeave:Connect(function() isHovering = false; Tooltip.Hide() end)
+end
+
+getgenv().ChuppyTooltip = Tooltip
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [1.6] MODAL
+-- ═══════════════════════════════════════════════════════════════════════════════
+local Modal = {}
+
+local function CreateModalBase(gui)
+    local overlay = U.New("TextButton", {
+        Name = "ModalOverlay", Size = UDim2.new(1, 0, 1, 0),
+        BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 1,
+        Text = "", AutoButtonColor = false, ZIndex = 99998, Modal = true,
+    }, gui)
+    local modal = U.New("Frame", {
+        Name = "Modal", Size = UDim2.new(0, 300, 0, 0), Position = UDim2.new(0.5, -150, 0.5, 0),
+        AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = Theme.Surface2,
+        BackgroundTransparency = 0, BorderSizePixel = 0, ZIndex = 99999,
+        AutomaticSize = Enum.AutomaticSize.Y,
+    }, overlay)
+    U.Corner(Theme.RadiusXL, modal)
+    U.Stroke(Theme.BorderLight, 1, 0, modal)
+    return overlay, modal
+end
+
+function Modal.Confirm(config)
+    config = config or {}
+    local title = config.Title or "Xác nhận"
+    local message = config.Message or "Bạn có chắc chắn?"
+    local yesText = config.YesText or "Đồng ý"
+    local noText = config.NoText or "Hủy"
+    local onYes = config.OnYes or function() end
+    local onNo = config.OnNo or function() end
+    local yesColor = config.YesColor or Theme.Success
+    local noColor = config.NoColor or Theme.Danger
+    local parent = config.Parent or getgenv().ChuppyScreenGui
+    if not parent then return end
+
+    local overlay, modal = CreateModalBase(parent)
+
+    U.New("TextLabel", {
+        Size = UDim2.new(1, -32, 0, 24), Position = UDim2.new(0, 16, 0, 18),
+        BackgroundTransparency = 1, Text = title, Font = Theme.FontBold, TextSize = Theme.SizeHeader,
+        TextColor3 = Theme.Text, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 100000,
+    }, modal)
+    U.New("TextLabel", {
+        Size = UDim2.new(1, -32, 0, 40), Position = UDim2.new(0, 16, 0, 48),
+        BackgroundTransparency = 1, Text = message, Font = Theme.FontRegular, TextSize = Theme.SizeMedium,
+        TextColor3 = Theme.TextDim, TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true, ZIndex = 100000,
+    }, modal)
+
+    local btnRow = U.New("Frame", {
+        Size = UDim2.new(1, -32, 0, 36), Position = UDim2.new(0, 16, 0, 96),
+        BackgroundTransparency = 1, ZIndex = 100000,
+    }, modal)
+    U.New("UIListLayout", {
+        FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10),
+        HorizontalAlignment = Enum.HorizontalAlignment.Right, SortOrder = Enum.SortOrder.LayoutOrder,
+    }, btnRow)
+
+    local noBtn = U.New("TextButton", {
+        Size = UDim2.new(0, 110, 1, 0), BackgroundColor3 = noColor, BorderSizePixel = 0,
+        Text = noText, Font = Theme.FontBold, TextSize = Theme.SizeMedium,
+        TextColor3 = Theme.TextBright, AutoButtonColor = false, LayoutOrder = 1, ZIndex = 100001,
+    }, btnRow)
+    U.Corner(Theme.RadiusSmall, noBtn)
+
+    local yesBtn = U.New("TextButton", {
+        Size = UDim2.new(0, 110, 1, 0), BackgroundColor3 = yesColor, BorderSizePixel = 0,
+        Text = yesText, Font = Theme.FontBold, TextSize = Theme.SizeMedium,
+        TextColor3 = Theme.TextBright, AutoButtonColor = false, LayoutOrder = 2, ZIndex = 100001,
+    }, btnRow)
+    U.Corner(Theme.RadiusSmall, yesBtn)
+
+    modal.Size = UDim2.new(0, 300, 0, 150)
+    overlay.BackgroundTransparency = 1
+    modal.Position = UDim2.new(0.5, -150, 0.5, 20)
+    modal.BackgroundTransparency = 1
+    U.Tween(overlay, Theme.AnimNormal, { BackgroundTransparency = 0.5 })
+    U.Tween(modal, Theme.AnimSpring, { Position = UDim2.new(0.5, -150, 0.5, 0), BackgroundTransparency = 0 })
+
+    local function close()
+        U.Tween(overlay, Theme.AnimFast, { BackgroundTransparency = 1 })
+        U.Tween(modal, Theme.AnimFast, { Position = UDim2.new(0.5, -150, 0.5, 20), BackgroundTransparency = 1 })
+        task.delay(0.2, function() if overlay and overlay.Parent then overlay:Destroy() end end)
+    end
+
+    yesBtn.MouseButton1Click:Connect(function() close(); pcall(onYes) end)
+    noBtn.MouseButton1Click:Connect(function() close(); pcall(onNo) end)
+    overlay.MouseButton1Click:Connect(function() close(); pcall(onNo) end)
+    return overlay
+end
+
+function Modal.Prompt(config)
+    config = config or {}
+    local title = config.Title or "Nhập liệu"
+    local placeholder = config.Placeholder or "Nhập ở đây..."
+    local default = config.Default or ""
+    local onSubmit = config.OnSubmit or function() end
+    local onCancel = config.OnCancel or function() end
+    local parent = config.Parent or getgenv().ChuppyScreenGui
+    if not parent then return end
+
+    local overlay, modal = CreateModalBase(parent)
+
+    U.New("TextLabel", {
+        Size = UDim2.new(1, -32, 0, 24), Position = UDim2.new(0, 16, 0, 18),
+        BackgroundTransparency = 1, Text = title, Font = Theme.FontBold, TextSize = Theme.SizeHeader,
+        TextColor3 = Theme.Text, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 100000,
+    }, modal)
+
+    local input = U.New("TextBox", {
+        Size = UDim2.new(1, -32, 0, 34), Position = UDim2.new(0, 16, 0, 52),
+        BackgroundColor3 = Theme.SurfaceDeep, BorderSizePixel = 0, Text = default,
+        PlaceholderText = placeholder, PlaceholderColor3 = Theme.TextMuted,
+        Font = Theme.FontRegular, TextSize = Theme.SizeMedium, TextColor3 = Theme.Text,
+        TextXAlignment = Enum.TextXAlignment.Left, ClearTextOnFocus = false, ZIndex = 100000,
+    }, modal)
+    U.Corner(Theme.RadiusSmall, input)
+    U.Padding(0, 0, 10, 10, input)
+    local inputStroke = U.Stroke(Theme.Border, 1, 0, input)
+    input.Focused:Connect(function() U.Tween(inputStroke, Theme.AnimFast, { Color = Theme.Accent }) end)
+    input.FocusLost:Connect(function() U.Tween(inputStroke, Theme.AnimFast, { Color = Theme.Border }) end)
+
+    local btnRow = U.New("Frame", {
+        Size = UDim2.new(1, -32, 0, 34), Position = UDim2.new(0, 16, 0, 100),
+        BackgroundTransparency = 1, ZIndex = 100000,
+    }, modal)
+    U.New("UIListLayout", {
+        FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10),
+        HorizontalAlignment = Enum.HorizontalAlignment.Right,
+    }, btnRow)
+
+    local cancelBtn = U.New("TextButton", {
+        Size = UDim2.new(0, 100, 1, 0), BackgroundColor3 = Theme.Surface3, BorderSizePixel = 0,
+        Text = "Hủy", Font = Theme.FontBold, TextSize = Theme.SizeMedium, TextColor3 = Theme.Text,
+        AutoButtonColor = false, LayoutOrder = 1, ZIndex = 100001,
+    }, btnRow)
+    U.Corner(Theme.RadiusSmall, cancelBtn)
+
+    local okBtn = U.New("TextButton", {
+        Size = UDim2.new(0, 100, 1, 0), BackgroundColor3 = Theme.Accent, BorderSizePixel = 0,
+        Text = "OK", Font = Theme.FontBold, TextSize = Theme.SizeMedium, TextColor3 = Theme.Background,
+        AutoButtonColor = false, LayoutOrder = 2, ZIndex = 100001,
+    }, btnRow)
+    U.Corner(Theme.RadiusSmall, okBtn)
+
+    modal.Size = UDim2.new(0, 300, 0, 150)
+    overlay.BackgroundTransparency = 1
+    modal.Position = UDim2.new(0.5, -150, 0.5, 20)
+    U.Tween(overlay, Theme.AnimNormal, { BackgroundTransparency = 0.5 })
+    U.Tween(modal, Theme.AnimSpring, { Position = UDim2.new(0.5, -150, 0.5, 0), BackgroundTransparency = 0 })
+
+    local function close()
+        U.Tween(overlay, Theme.AnimFast, { BackgroundTransparency = 1 })
+        U.Tween(modal, Theme.AnimFast, { Position = UDim2.new(0.5, -150, 0.5, 20), BackgroundTransparency = 1 })
+        task.delay(0.2, function() if overlay and overlay.Parent then overlay:Destroy() end end)
+    end
+
+    okBtn.MouseButton1Click:Connect(function() local t = input.Text; close(); pcall(onSubmit, t) end)
+    cancelBtn.MouseButton1Click:Connect(function() close(); pcall(onCancel) end)
+    task.defer(function() pcall(function() input:CaptureFocus() end) end)
+    return overlay
+end
+
+getgenv().ChuppyModal = Modal
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [1.7] UI LIBRARY CLASS (Window, Tab, Section, Components)
+-- ═══════════════════════════════════════════════════════════════════════════════
+local UILibrary = {}
+UILibrary.__index = UILibrary
+UILibrary.Theme = Theme
+UILibrary.Notification = Notification
+UILibrary.Tooltip = Tooltip
+UILibrary.Modal = Modal
+UILibrary.Anim = Anim
+
+function UILibrary:CreateWindow(config)
+    config = config or {}
+    local title = config.Title or "Chuppy Hub V2"
+    local subtitle = config.SubTitle or "Premium Edition"
+    local width = config.Width or 360
+    local height = config.Height or 460
+
+    local self = setmetatable({}, UILibrary)
+    self.config, self.title, self.tabs = config, title, {}
+    self.currentTab, self.flags = nil, {}
+    self.minimized, self._elementCount = false, 0
+
+    local gui = U.New("ScreenGui", {
+        Name = "ChuppyUI_" .. tostring(math.random(10000, 99999)),
+        ResetOnSpawn = false, ZIndexBehavior = Enum.ZIndexBehavior.Sibling, IgnoreGuiInset = true,
+    })
+    pcall(function() gui.Parent = Svc.CoreGui end)
+    if not gui.Parent then gui.Parent = LP:WaitForChild("PlayerGui") end
+    self.screenGui = gui
+    getgenv().ChuppyScreenGui = gui
+
+    InitNotiHolder(gui); InitTooltip(gui)
+
+    local main = U.New("Frame", {
+        Name = "MainWindow", Size = UDim2.new(0, width, 0, height),
+        Position = UDim2.new(0.5, -width / 2, 0.5, -height / 2),
+        BackgroundColor3 = Theme.Background, BorderSizePixel = 0,
+        Active = true, ClipsDescendants = true,
+    }, gui)
+    U.Corner(Theme.RadiusXL, main)
+    U.Stroke(Theme.Border, 1, 0, main)
+    self.mainFrame = main
+
+    U.New("ImageLabel", {
+        Name = "Shadow", Size = UDim2.new(1, 20, 1, 20), Position = UDim2.new(0, -10, 0, -10),
+        BackgroundTransparency = 1, Image = "rbxassetid://5028857084",
+        ImageColor3 = Color3.new(0, 0, 0), ImageTransparency = 0.7,
+        ScaleType = Enum.ScaleType.Slice, SliceCenter = Rect.new(24, 24, 276, 276), ZIndex = -1,
+    }, main)
+
+    local titleBar = U.New("Frame", {
+        Name = "TitleBar", Size = UDim2.new(1, 0, 0, 46),
+        BackgroundColor3 = Theme.Surface, BorderSizePixel = 0,
+    }, main)
+    U.Corner(Theme.RadiusXL, titleBar)
+    U.New("Frame", {
+        Size = UDim2.new(1, 0, 0, 14), Position = UDim2.new(0, 0, 1, -14),
+        BackgroundColor3 = Theme.Surface, BorderSizePixel = 0, ZIndex = 2,
+    }, titleBar)
+
+    local logoDot = U.New("Frame", {
+        Name = "Logo", Size = UDim2.new(0, 26, 0, 26), Position = UDim2.new(0, 12, 0.5, -13),
+        BackgroundColor3 = Theme.Accent, BorderSizePixel = 0, ZIndex = 3,
+    }, titleBar)
+    U.Corner(Theme.RadiusFull, logoDot)
+    U.New("TextLabel", {
+        Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1,
+        Text = "🐾", Font = Theme.FontBold, TextSize = 14, TextColor3 = Theme.Background, ZIndex = 4,
+    }, logoDot)
+
+    U.New("TextLabel", {
+        Name = "TitleText", Size = UDim2.new(0, width - 140, 0, 16), Position = UDim2.new(0, 46, 0, 6),
+        BackgroundTransparency = 1, Text = title:upper(), Font = Theme.FontBlack,
+        TextSize = Theme.SizeTitle, TextColor3 = Theme.Text, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3,
+    }, titleBar)
+    U.New("TextLabel", {
+        Name = "SubtitleText", Size = UDim2.new(0, width - 140, 0, 12), Position = UDim2.new(0, 46, 0, 24),
+        BackgroundTransparency = 1, Text = subtitle, Font = Theme.FontRegular, TextSize = Theme.SizeSmall,
+        TextColor3 = Theme.TextDim, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3,
+    }, titleBar)
+
+    local ctrl = U.New("Frame", {
+        Size = UDim2.new(0, 70, 0, 30), Position = UDim2.new(1, -78, 0.5, -15),
+        BackgroundTransparency = 1, ZIndex = 3,
+    }, titleBar)
+    U.New("UIListLayout", {
+        FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Right,
+        VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 6),
+    }, ctrl)
+
+    local minBtn = U.New("TextButton", {
+        Size = UDim2.new(0, 28, 0, 28), BackgroundColor3 = Theme.Surface2,
+        BorderSizePixel = 0, Text = "—", Font = Theme.FontBlack, TextSize = 14,
+        TextColor3 = Theme.Warning, AutoButtonColor = false, ZIndex = 4,
+    }, ctrl)
+    U.Corner(Theme.RadiusSmall, minBtn)
+
+    local closeBtn = U.New("TextButton", {
+        Size = UDim2.new(0, 28, 0, 28), BackgroundColor3 = Theme.Surface2,
+        BorderSizePixel = 0, Text = "✕", Font = Theme.FontBlack, TextSize = 12,
+        TextColor3 = Theme.Danger, AutoButtonColor = false, ZIndex = 4,
+    }, ctrl)
+    U.Corner(Theme.RadiusSmall, closeBtn)
+
+    minBtn.MouseEnter:Connect(function() U.Tween(minBtn, Theme.AnimFast, { BackgroundColor3 = Theme.Surface3 }) end)
+    minBtn.MouseLeave:Connect(function() U.Tween(minBtn, Theme.AnimFast, { BackgroundColor3 = Theme.Surface2 }) end)
+    closeBtn.MouseEnter:Connect(function() U.Tween(closeBtn, Theme.AnimFast, { BackgroundColor3 = Theme.DangerDark }) end)
+    closeBtn.MouseLeave:Connect(function() U.Tween(closeBtn, Theme.AnimFast, { BackgroundColor3 = Theme.Surface2 }) end)
+
+    local dragging, dragStart, startPos
+    titleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true; dragStart = input.Position; startPos = main.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+    titleBar.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    local sidebar = U.New("Frame", {
+        Name = "Sidebar", Size = UDim2.new(0, 54, 1, -60), Position = UDim2.new(0, 8, 0, 52),
+        BackgroundColor3 = Theme.Surface, BorderSizePixel = 0, ClipsDescendants = true,
+    }, main)
+    U.Corner(Theme.RadiusLarge, sidebar)
+    U.Stroke(Theme.Border, 1, 0.5, sidebar)
+
+    local sidebarScroll = U.New("ScrollingFrame", {
+        Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, BorderSizePixel = 0,
+        ScrollBarThickness = 0, AutomaticCanvasSize = Enum.AutomaticSize.Y,
+    }, sidebar)
+    U.Padding(6, 6, 6, 6, sidebarScroll)
+    U.New("UIListLayout", {
+        Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder,
+        HorizontalAlignment = Enum.HorizontalAlignment.Center,
+    }, sidebarScroll)
+
+    local content = U.New("Frame", {
+        Name = "Content", Size = UDim2.new(1, -78, 1, -60), Position = UDim2.new(0, 70, 0, 52),
+        BackgroundColor3 = Theme.Surface, BorderSizePixel = 0, ClipsDescendants = true,
+    }, main)
+    U.Corner(Theme.RadiusLarge, content)
+    U.Stroke(Theme.Border, 1, 0.5, content)
+
+    self.sidebar, self.sidebarScroll = sidebar, sidebarScroll
+    self.content, self.titleBar = content, titleBar
+    self.closeBtn, self.minBtn = closeBtn, minBtn
+
+    minBtn.MouseButton1Click:Connect(function()
+        self.minimized = not self.minimized
+        U.Tween(main, Theme.AnimSmooth, {
+            Size = self.minimized and UDim2.new(0, width, 0, 46) or UDim2.new(0, width, 0, height),
+        })
+        sidebar.Visible = not self.minimized
+        content.Visible = not self.minimized
+    end)
+
+    closeBtn.MouseButton1Click:Connect(function()
+        U.Tween(main, Theme.AnimNormal, { Position = UDim2.new(main.Position.X.Scale, main.Position.X.Offset, 1.2, 0) })
+        task.wait(0.25)
+        gui:Destroy()
+    end)
+
+    main.Position = UDim2.new(0.5, -width / 2, 0.7, -height / 2)
+    main.BackgroundTransparency = 1
+    U.Tween(main, Theme.AnimSpring, { Position = UDim2.new(0.5, -width / 2, 0.5, -height / 2), BackgroundTransparency = 0 })
+
+    return self
+end
+
+function UILibrary:MakeTab(config)
+    config = config or {}
+    local name = config.Name or config[1] or "Tab"
+    local icon = config.Icon or config[2] or "•"
+    local order = config.Order or (#self.tabs + 1)
+
+    local tabBtn = U.New("TextButton", {
+        Name = "TabBtn_" .. name, Size = UDim2.new(1, 0, 0, 38),
+        BackgroundColor3 = Theme.Surface, BackgroundTransparency = 1,
+        BorderSizePixel = 0, Text = "", AutoButtonColor = false, LayoutOrder = order,
+    }, self.sidebarScroll)
+    U.Corner(Theme.RadiusSmall, tabBtn)
+
+    local iconLabel = U.New("TextLabel", {
+        Name = "Icon", Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1,
+        Text = icon, Font = Theme.FontBold, TextSize = 18, TextColor3 = Theme.TextDim,
+        TextXAlignment = Enum.TextXAlignment.Center, TextYAlignment = Enum.TextYAlignment.Center,
+    }, tabBtn)
+
+    local indicator = U.New("Frame", {
+        Name = "Indicator", Size = UDim2.new(0, 3, 0, 0), Position = UDim2.new(0, 0, 0.5, 0),
+        BackgroundColor3 = Theme.Accent, BorderSizePixel = 0, ZIndex = 2,
+    }, tabBtn)
+    U.Corner(UDim.new(1, 0), indicator)
+
+    local page = U.New("ScrollingFrame", {
+        Name = "Page_" .. name, Size = UDim2.new(1, -16, 1, -16), Position = UDim2.new(0, 8, 0, 8),
+        BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 3,
+        ScrollBarImageColor3 = Theme.Border, ScrollBarImageTransparency = 0.4,
+        AutomaticCanvasSize = Enum.AutomaticSize.Y, Visible = false,
+    }, self.content)
+    U.New("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, page)
+
+    local tab = {
+        name = name, icon = icon, _window = self, _btn = tabBtn,
+        _icon = iconLabel, _indicator = indicator, _page = page,
+        _elementCount = 0, _sections = {},
+    }
+    setmetatable(tab, UILibrary)
+    table.insert(self.tabs, tab)
+
+    tabBtn.MouseButton1Click:Connect(function() self:SelectTab(name) end)
+    tabBtn.MouseEnter:Connect(function()
+        if self.currentTab ~= name then
+            U.Tween(tabBtn, Theme.AnimFast, { BackgroundTransparency = 0.5, BackgroundColor3 = Theme.Surface2 })
+            U.Tween(iconLabel, Theme.AnimFast, { TextColor3 = Theme.Text })
+            Tooltip.Show(name, tabBtn.AbsolutePosition.X + 40, tabBtn.AbsolutePosition.Y + 8)
+        end
+    end)
+    tabBtn.MouseLeave:Connect(function()
+        if self.currentTab ~= name then
+            U.Tween(tabBtn, Theme.AnimFast, { BackgroundTransparency = 1 })
+            U.Tween(iconLabel, Theme.AnimFast, { TextColor3 = Theme.TextDim })
+        end
+        Tooltip.Hide()
+    end)
+
+    return tab
+end
+
+function UILibrary:SelectTab(name)
+    for _, t in ipairs(self.tabs) do
+        if t.name == name then
+            t._page.Visible = true
+            t._btn.BackgroundColor3 = Theme.Surface3
+            t._btn.BackgroundTransparency = 0
+            t._icon.TextColor3 = Theme.Accent
+            t._indicator.Size = UDim2.new(0, 3, 0, 18)
+            t._indicator.Position = UDim2.new(0, 0, 0.5, -9)
+            self.currentTab = name
+        else
+            t._page.Visible = false
+            t._btn.BackgroundColor3 = Theme.Surface
+            t._btn.BackgroundTransparency = 1
+            t._icon.TextColor3 = Theme.TextDim
+            t._indicator.Size = UDim2.new(0, 3, 0, 0)
+            t._indicator.Position = UDim2.new(0, 0, 0.5, 0)
+        end
+    end
+end
+
+function UILibrary:CreateSection(config)
+    local name = type(config) == "table" and (config.Name or config[1]) or (config or "Section")
+    local collapsed = type(config) == "table" and config.Collapsed or false
+
+    local wrapper = U.New("Frame", {
+        Name = "SectionWrapper", Size = UDim2.new(1, 0, 0, 32),
+        BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.Y,
+        LayoutOrder = self._elementCount + 1,
+    }, self._page)
+    self._elementCount = self._elementCount + 1
+
+    local header = U.New("TextButton", {
+        Name = "Header", Size = UDim2.new(1, 0, 0, 28), BackgroundColor3 = Theme.Surface2,
+        BackgroundTransparency = 0.4, BorderSizePixel = 0, Text = "", AutoButtonColor = false,
+    }, wrapper)
+    U.Corner(Theme.RadiusSmall, header)
+
+    local chevron = U.New("TextLabel", {
+        Name = "Chevron", Size = UDim2.new(0, 20, 0, 20), Position = UDim2.new(0, 8, 0.5, -10),
+        BackgroundTransparency = 1, Text = "▶", Font = Theme.FontBold, TextSize = 10,
+        TextColor3 = Theme.Accent, Rotation = collapsed and 0 or 90,
+    }, header)
+
+    U.New("TextLabel", {
+        Name = "Title", Size = UDim2.new(1, -50, 1, 0), Position = UDim2.new(0, 30, 0, 0),
+        BackgroundTransparency = 1, Text = name:upper(), Font = Theme.FontBold,
+        TextSize = Theme.SizeSmall, TextColor3 = Theme.Accent, TextXAlignment = Enum.TextXAlignment.Left,
+    }, header)
+
+    local divider = U.New("Frame", {
+        Size = UDim2.new(0, 40, 0, 1), Position = UDim2.new(1, -50, 0.5, 0),
+        BackgroundColor3 = Theme.Accent, BackgroundTransparency = 0.6, BorderSizePixel = 0,
+    }, header)
+
+    local container = U.New("Frame", {
+        Name = "Container", Size = UDim2.new(1, 0, 0, 0), Position = UDim2.new(0, 0, 0, 32),
+        BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.Y, Visible = not collapsed,
+    }, wrapper)
+    U.New("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder }, container)
+
+    local section = {
+        _wrapper = wrapper, _header = header, _container = container,
+        _chevron = chevron, _name = name, _collapsed = collapsed, _window = self,
+    }
+    setmetatable(section, UILibrary)
+
+    header.MouseButton1Click:Connect(function()
+        section._collapsed = not section._collapsed
+        if section._collapsed then
+            U.Tween(container, Theme.AnimNormal, { Size = UDim2.new(1, 0, 0, 0) })
+            task.delay(0.15, function()
+                if section._collapsed then container.Visible = false end
+            end)
+            Anim.RotateChevron(chevron, 0)
+        else
+            container.Visible = true
+            U.Tween(container, Theme.AnimNormal, { Size = UDim2.new(1, 0, 0, 0) })
+            Anim.RotateChevron(chevron, 90)
+        end
+    end)
+
+    header.MouseEnter:Connect(function()
+        U.Tween(header, Theme.AnimFast, { BackgroundTransparency = 0 })
+        U.Tween(divider, Theme.AnimFast, { BackgroundTransparency = 0.3 })
+    end)
+    header.MouseLeave:Connect(function()
+        U.Tween(header, Theme.AnimFast, { BackgroundTransparency = 0.4 })
+        U.Tween(divider, Theme.AnimFast, { BackgroundTransparency = 0.6 })
+    end)
+
+    return section
+end
+
+function UILibrary:AddToggle(config, callback)
+    config = config or {}
+    local name = config.Name or "Toggle"
+    local desc = config.Desc
+    local default = config.Default or false
+    local flag = config.Flag or name
+    local disabled = config.Disabled or false
+    local tooltip = config.Tooltip
+    local hasDesc = desc ~= nil and desc ~= ""
+    local height = hasDesc and 54 or 42
+
+    local frame = U.New("TextButton", {
+        Name = "Toggle_" .. name, Size = UDim2.new(1, 0, 0, height),
+        BackgroundColor3 = Theme.Surface2, BorderSizePixel = 0,
+        Text = "", AutoButtonColor = false, LayoutOrder = self._elementCount + 1,
+    }, self._container or self._page)
+    U.Corner(Theme.RadiusSmall, frame)
+    local frameStroke = U.Stroke(Theme.Border, 1, 0.7, frame)
+    self._elementCount = self._elementCount + 1
+
+    local title = U.New("TextLabel", {
+        Name = "Title", Size = UDim2.new(1, -80, 0, 16),
+        Position = UDim2.new(0, 12, 0, hasDesc and 8 or 0),
+        BackgroundTransparency = 1, Text = name, Font = Theme.FontMedium,
+        TextSize = Theme.SizeMedium, TextColor3 = Theme.Text,
+        TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
+    }, frame)
+
+    if hasDesc then
+        U.New("TextLabel", {
+            Name = "Desc", Size = UDim2.new(1, -80, 0, 14), Position = UDim2.new(0, 12, 0, 26),
+            BackgroundTransparency = 1, Text = desc, Font = Theme.FontRegular,
+            TextSize = Theme.SizeSmall, TextColor3 = Theme.TextDim,
+            TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
+        }, frame)
+    end
+
+    local switch = U.New("Frame", {
+        Name = "Switch", Size = UDim2.new(0, 42, 0, 22), Position = UDim2.new(1, -54, 0.5, -11),
+        BackgroundColor3 = default and Theme.Success or Theme.Surface3, BorderSizePixel = 0,
+    }, frame)
+    U.Corner(Theme.RadiusFull, switch)
+
+    local track = U.New("Frame", {
+        Name = "Track", Size = UDim2.new(1, 0, 1, 0),
+        BackgroundColor3 = default and Theme.Success or Theme.Surface3, BorderSizePixel = 0,
+    }, switch)
+    U.Corner(Theme.RadiusFull, track)
+
+    local knob = U.New("Frame", {
+        Name = "Knob", Size = UDim2.new(0, 18, 0, 18),
+        Position = default and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9),
+        BackgroundColor3 = Theme.TextBright, BorderSizePixel = 0,
+    }, switch)
+    U.Corner(Theme.RadiusFull, knob)
+
+    local state = default
+    local function updateVisual(instant)
+        local info = instant and Theme.AnimInstant or Theme.AnimSmooth
+        if state then
+            U.Tween(track, info, { BackgroundColor3 = Theme.Success })
+            U.Tween(knob, Theme.AnimSpring, { Position = UDim2.new(1, -20, 0.5, -9), BackgroundColor3 = Theme.TextBright })
+            U.Tween(frameStroke, info, { Color = Theme.Success, Transparency = 0.6 })
+            U.Tween(title, info, { TextColor3 = Theme.TextBright })
+        else
+            U.Tween(track, info, { BackgroundColor3 = Theme.Surface3 })
+            U.Tween(knob, Theme.AnimSpring, { Position = UDim2.new(0, 2, 0.5, -9), BackgroundColor3 = Theme.TextDim })
+            U.Tween(frameStroke, info, { Color = Theme.Border, Transparency = 0.7 })
+            U.Tween(title, info, { TextColor3 = Theme.Text })
+        end
+    end
+
+    local clickable = U.New("TextButton", {
+        Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1,
+        Text = "", AutoButtonColor = false, ZIndex = 5,
+    }, frame)
+
+    clickable.MouseButton1Click:Connect(function()
+        if disabled then return end
+        state = not state
+        updateVisual()
+        Anim.Pulse(frame, 1.015, 0.15)
+        if callback then pcall(callback, state) end
+    end)
+
+    clickable.MouseEnter:Connect(function()
+        if disabled then return end
+        U.Tween(frame, Theme.AnimFast, { BackgroundColor3 = Theme.Surface3 })
+        U.Tween(frameStroke, Theme.AnimFast, { Transparency = 0.4 })
+    end)
+    clickable.MouseLeave:Connect(function()
+        U.Tween(frame, Theme.AnimFast, { BackgroundColor3 = Theme.Surface2 })
+        U.Tween(frameStroke, Theme.AnimFast, { Transparency = 0.7 })
+    end)
+
+    if tooltip then Tooltip.Attach(frame, tooltip) end
+    self.flags[flag] = { type = "toggle", value = state }
+
+    return {
+        Set = function(v) if state ~= v then state = v; updateVisual(true); if callback then pcall(callback, state) end end end,
+        Get = function() return state end,
+        SetDisabled = function(v) disabled = v; frame.BackgroundTransparency = v and 0.5 or 0 end,
+        Flag = flag,
+    }
+end
+
+function UILibrary:AddButton(config, callback)
+    config = config or {}
+    local name = config.Name or "Button"
+    local desc = config.Desc
+    local color = config.Color or Theme.Accent
+    local tooltip = config.Tooltip
+    local hasDesc = desc ~= nil and desc ~= ""
+    local height = hasDesc and 50 or 40
+
+    local btn = U.New("TextButton", {
+        Name = "Button_" .. name, Size = UDim2.new(1, 0, 0, height),
+        BackgroundColor3 = Theme.Surface2, BorderSizePixel = 0,
+        Text = "", AutoButtonColor = false, ClipsDescendants = true,
+        LayoutOrder = self._elementCount + 1,
+    }, self._container or self._page)
+    U.Corner(Theme.RadiusSmall, btn)
+    local btnStroke = U.Stroke(color, 1, 0.5, btn)
+    self._elementCount = self._elementCount + 1
+
+    U.New("TextLabel", {
+        Name = "Title", Size = UDim2.new(1, -40, 0, 16),
+        Position = UDim2.new(0, 12, 0, hasDesc and 8 or 0),
+        BackgroundTransparency = 1, Text = name, Font = Theme.FontMedium,
+        TextSize = Theme.SizeMedium, TextColor3 = Theme.Text,
+        TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
+    }, btn)
+
+    if hasDesc then
+        U.New("TextLabel", {
+            Name = "Desc", Size = UDim2.new(1, -40, 0, 14), Position = UDim2.new(0, 12, 0, 26),
+            BackgroundTransparency = 1, Text = desc, Font = Theme.FontRegular,
+            TextSize = Theme.SizeSmall, TextColor3 = Theme.TextDim,
+            TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
+        }, btn)
+    end
+
+    U.New("TextLabel", {
+        Name = "Arrow", Size = UDim2.new(0, 20, 1, 0), Position = UDim2.new(1, -26, 0, 0),
+        BackgroundTransparency = 1, Text = "›", Font = Theme.FontBlack, TextSize = 18, TextColor3 = color,
+    }, btn)
+
+    btn.MouseButton1Click:Connect(function()
+        local mouse = Svc.UIS:GetMouseLocation()
+        Anim.Ripple(btn, mouse.X - btn.AbsolutePosition.X, mouse.Y - btn.AbsolutePosition.Y, color)
+        Anim.Pulse(btn, 0.98, 0.1)
+        if callback then pcall(callback) end
+    end)
+
+    btn.MouseEnter:Connect(function()
+        U.Tween(btn, Theme.AnimFast, { BackgroundColor3 = Theme.Surface3 })
+        U.Tween(btnStroke, Theme.AnimFast, { Transparency = 0.2 })
+    end)
+    btn.MouseLeave:Connect(function()
+        U.Tween(btn, Theme.AnimFast, { BackgroundColor3 = Theme.Surface2 })
+        U.Tween(btnStroke, Theme.AnimFast, { Transparency = 0.5 })
+    end)
+
+    if tooltip then Tooltip.Attach(btn, tooltip) end
+    return btn
+end
+
+function UILibrary:AddSlider(config, callback)
+    config = config or {}
+    local name = config.Name or "Slider"
+    local min = config.Min or 0
+    local max = config.Max or 100
+    local default = config.Default or min
+    local step = config.Step or 1
+    local suffix = config.Suffix or ""
+    local precise = config.Precise or false
+    local value = math.clamp(default, min, max)
+
+    local frame = U.New("Frame", {
+        Name = "Slider_" .. name, Size = UDim2.new(1, 0, 0, 52),
+        BackgroundColor3 = Theme.Surface2, BorderSizePixel = 0, LayoutOrder = self._elementCount + 1,
+    }, self._container or self._page)
+    U.Corner(Theme.RadiusSmall, frame)
+    local frameStroke = U.Stroke(Theme.Border, 1, 0.7, frame)
+    self._elementCount = self._elementCount + 1
+
+    U.New("TextLabel", {
+        Name = "Title", Size = UDim2.new(0.6, -12, 0, 18), Position = UDim2.new(0, 12, 0, 6),
+        BackgroundTransparency = 1, Text = name, Font = Theme.FontMedium, TextSize = Theme.SizeMedium,
+        TextColor3 = Theme.Text, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
+    }, frame)
+
+    local valueLabel = U.New("TextLabel", {
+        Name = "Value", Size = UDim2.new(0.4, -12, 0, 18), Position = UDim2.new(0.6, 0, 0, 6),
+        BackgroundTransparency = 1, Text = tostring(value) .. suffix, Font = Theme.FontBold,
+        TextSize = Theme.SizeMedium, TextColor3 = Theme.Accent, TextXAlignment = Enum.TextXAlignment.Right,
+    }, frame)
+
+    local track = U.New("Frame", {
+        Name = "Track", Size = UDim2.new(1, -24, 0, 8), Position = UDim2.new(0, 12, 0, 32),
+        BackgroundColor3 = Theme.SurfaceDeep, BorderSizePixel = 0,
+    }, frame)
+    U.Corner(Theme.RadiusFull, track)
+
+    local fill = U.New("Frame", {
+        Name = "Fill", Size = UDim2.new((value - min) / (max - min), 0, 1, 0),
+        BackgroundColor3 = Theme.Accent, BorderSizePixel = 0,
+    }, track)
+    U.Corner(Theme.RadiusFull, fill)
+
+    local knob = U.New("Frame", {
+        Name = "Knob", Size = UDim2.new(0, 16, 0, 16),
+        Position = UDim2.new((value - min) / (max - min), -8, 0.5, -8),
+        BackgroundColor3 = Theme.TextBright, BorderSizePixel = 0, ZIndex = 3,
+    }, track)
+    U.Corner(Theme.RadiusFull, knob)
+    U.Stroke(Theme.Accent, 2, 0, knob)
+
+    local dragging = false
+    local trackInput = U.New("TextButton", {
+        Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1,
+        Text = "", AutoButtonColor = false, ZIndex = 5,
+    }, track)
+
+    local function updateFromX(relX)
+        relX = math.clamp(relX, 0, 1)
+        local rawValue = min + (max - min) * relX
+        local finalValue
+        if precise then finalValue = math.floor(rawValue * 100) / 100
+        else finalValue = math.clamp(math.floor(rawValue / step + 0.5) * step, min, max) end
+        value = finalValue
+        local rel = (value - min) / (max - min)
+        fill.Size = UDim2.new(rel, 0, 1, 0)
+        knob.Position = UDim2.new(rel, -8, 0.5, -8)
+        valueLabel.Text = tostring(value) .. suffix
+        if callback then pcall(callback, value) end
+    end
+
+    trackInput.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            updateFromX((input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X)
+            U.Tween(knob, Theme.AnimFast, { Size = UDim2.new(0, 20, 0, 20), Position = UDim2.new(knob.Position.X.Scale, -10, 0.5, -10) })
+        end
+    end)
+    trackInput.InputChanged:Connect(function(input)
+        if not dragging then return end
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            updateFromX((input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X)
+        end
+    end)
+    trackInput.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+            U.Tween(knob, Theme.AnimSpring, { Size = UDim2.new(0, 16, 0, 16), Position = UDim2.new(knob.Position.X.Scale, -8, 0.5, -8) })
+        end
+    end)
+    trackInput.MouseEnter:Connect(function() U.Tween(frameStroke, Theme.AnimFast, { Transparency = 0.4 }) end)
+    trackInput.MouseLeave:Connect(function() U.Tween(frameStroke, Theme.AnimFast, { Transparency = 0.7 }) end)
+
+    return {
+        Set = function(v)
+            v = math.clamp(v, min, max); value = v
+            local rel = (value - min) / (max - min)
+            fill.Size = UDim2.new(rel, 0, 1, 0)
+            knob.Position = UDim2.new(rel, -8, 0.5, -8)
+            valueLabel.Text = tostring(value) .. suffix
+            if callback then pcall(callback, value) end
+        end,
+        Get = function() return value end,
+    }
+end
+
+function UILibrary:AddDropdown(config, callback)
+    config = config or {}
+    local name = config.Name or "Dropdown"
+    local options = config.Options or config.List or {}
+    local default = config.Default or options[1]
+    local multi = config.Multi or false
+    local search = config.Search or false
+
+    local frame = U.New("Frame", {
+        Name = "Dropdown_" .. name, Size = UDim2.new(1, 0, 0, 38),
+        BackgroundColor3 = Theme.Surface2, BorderSizePixel = 0,
+        LayoutOrder = self._elementCount + 1, ZIndex = 3,
+    }, self._container or self._page)
+    U.Corner(Theme.RadiusSmall, frame)
+    local frameStroke = U.Stroke(Theme.Border, 1, 0.7, frame)
+    self._elementCount = self._elementCount + 1
+
+    local valueLabel = U.New("TextLabel", {
+        Name = "Value", Size = UDim2.new(1, -40, 1, 0), Position = UDim2.new(0, 12, 0, 0),
+        BackgroundTransparency = 1, Text = name .. ": " .. tostring(default or "None"),
+        Font = Theme.FontMedium, TextSize = Theme.SizeMedium, TextColor3 = Theme.Text,
+        TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
+    }, frame)
+
+    local arrow = U.New("TextLabel", {
+        Name = "Arrow", Size = UDim2.new(0, 20, 1, 0), Position = UDim2.new(1, -26, 0, 0),
+        BackgroundTransparency = 1, Text = "▾", Font = Theme.FontBlack,
+        TextSize = 14, TextColor3 = Theme.Accent,
+    }, frame)
+
+    local clickBtn = U.New("TextButton", {
+        Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1,
+        Text = "", AutoButtonColor = false, ZIndex = 4,
+    }, frame)
+
+    local menu = U.New("ScrollingFrame", {
+        Name = "Menu", Size = UDim2.new(1, 0, 0, 0), Position = UDim2.new(0, 0, 1, 4),
+        BackgroundColor3 = Theme.Background, BorderSizePixel = 0, ScrollBarThickness = 3,
+        ScrollBarImageColor3 = Theme.Accent, AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        Visible = false, ZIndex = 100,
+    }, frame)
+    U.Corner(Theme.RadiusSmall, menu)
+    U.Stroke(Theme.BorderLight, 1, 0, menu)
+    U.New("UIListLayout", { Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder }, menu)
+    U.Padding(4, 4, 4, 4, menu)
+
+    local selected = {}
+    if multi and type(default) == "table" then
+        for _, v in ipairs(default) do selected[v] = true end
+    else
+        selected[default] = true
+    end
+    local currentValue = default
+
+    local searchBox
+    if search then
+        searchBox = U.New("TextBox", {
+            Size = UDim2.new(1, 0, 0, 26), BackgroundColor3 = Theme.Surface2, BorderSizePixel = 0,
+            Text = "", PlaceholderText = "🔍 Tìm kiếm...", PlaceholderColor3 = Theme.TextMuted,
+            Font = Theme.FontRegular, TextSize = Theme.SizeSmall, TextColor3 = Theme.Text,
+            TextXAlignment = Enum.TextXAlignment.Left, ClearTextOnFocus = false, LayoutOrder = 0,
+        }, menu)
+        U.Corner(Theme.RadiusSmall, searchBox)
+        U.Padding(0, 0, 8, 8, searchBox)
+    end
+
+    local optBtns = {}
+    for i, opt in ipairs(options) do
+        local optBtn = U.New("TextButton", {
+            Name = "Opt_" .. tostring(opt), Size = UDim2.new(1, 0, 0, 26),
+            BackgroundColor3 = Theme.Surface2, BorderSizePixel = 0,
+            Text = "  " .. tostring(opt), Font = Theme.FontRegular, TextSize = Theme.SizeSmall,
+            TextColor3 = selected[opt] and Theme.Accent or Theme.Text,
+            TextXAlignment = Enum.TextXAlignment.Left, AutoButtonColor = false,
+            LayoutOrder = i + (search and 1 or 0),
+        }, menu)
+        U.Corner(Theme.RadiusSmall, optBtn)
+        table.insert(optBtns, { btn = optBtn, name = tostring(opt) })
+
+        optBtn.MouseEnter:Connect(function() U.Tween(optBtn, Theme.AnimFast, { BackgroundColor3 = Theme.Surface3 }) end)
+        optBtn.MouseLeave:Connect(function() U.Tween(optBtn, Theme.AnimFast, { BackgroundColor3 = Theme.Surface2 }) end)
+        optBtn.MouseButton1Click:Connect(function()
+            if multi then
+                selected[opt] = not selected[opt]
+                optBtn.TextColor3 = selected[opt] and Theme.Accent or Theme.Text
+                local selList = {}
+                for k, v in pairs(selected) do if v then table.insert(selList, k) end end
+                currentValue = selList
+                valueLabel.Text = name .. ": " .. (#selList > 0 and table.concat(selList, ", ") or "None")
+                if callback then pcall(callback, selList) end
+            else
+                for _, data in ipairs(optBtns) do data.btn.TextColor3 = Theme.Text end
+                optBtn.TextColor3 = Theme.Accent
+                currentValue = opt
+                selected = { [opt] = true }
+                valueLabel.Text = name .. ": " .. tostring(opt)
+                menu.Visible = false
+                U.Tween(menu, Theme.AnimFast, { Size = UDim2.new(1, 0, 0, 0) })
+                U.Tween(arrow, Theme.AnimFast, { Rotation = 0 })
+                if callback then pcall(callback, opt) end
+            end
+        end)
+    end
+
+    if searchBox then
+        searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+            local txt = searchBox.Text:lower()
+            for _, data in ipairs(optBtns) do
+                data.btn.Visible = txt == "" or data.name:lower():find(txt, 1, true) ~= nil
+            end
+        end)
+    end
+
+    local isOpen = false
+    clickBtn.MouseButton1Click:Connect(function()
+        isOpen = not isOpen
+        if isOpen then
+            task.wait()
+            local layout = menu:FindFirstChildOfClass("UIListLayout")
+            local h = math.min((layout and layout.AbsoluteContentSize.Y or 30) + 10, 180)
+            menu.Visible = true
+            U.Tween(menu, Theme.AnimSpring, { Size = UDim2.new(1, 0, 0, h) })
+            U.Tween(arrow, Theme.AnimSpring, { Rotation = 180 })
+            U.Tween(frameStroke, Theme.AnimFast, { Color = Theme.Accent, Transparency = 0.3 })
+        else
+            U.Tween(menu, Theme.AnimFast, { Size = UDim2.new(1, 0, 0, 0) })
+            U.Tween(arrow, Theme.AnimFast, { Rotation = 0 })
+            U.Tween(frameStroke, Theme.AnimFast, { Color = Theme.Border, Transparency = 0.7 })
+            task.delay(0.15, function() if not isOpen then menu.Visible = false end end)
+        end
+    end)
+
+    clickBtn.MouseEnter:Connect(function() U.Tween(frame, Theme.AnimFast, { BackgroundColor3 = Theme.Surface3 }) end)
+    clickBtn.MouseLeave:Connect(function() U.Tween(frame, Theme.AnimFast, { BackgroundColor3 = Theme.Surface2 }) end)
+
+    return {
+        Set = function(v)
+            if multi then
+                selected = {}
+                for _, val in ipairs(v) do selected[val] = true end
+                currentValue = v
+                for _, data in ipairs(optBtns) do data.btn.TextColor3 = selected[data.name] and Theme.Accent or Theme.Text end
+                valueLabel.Text = name .. ": " .. (#v > 0 and table.concat(v, ", ") or "None")
+            else
+                selected = { [v] = true }
+                currentValue = v
+                for _, data in ipairs(optBtns) do data.btn.TextColor3 = (data.name == v) and Theme.Accent or Theme.Text end
+                valueLabel.Text = name .. ": " .. tostring(v)
+            end
+            if callback then pcall(callback, v) end
+        end,
+        Get = function() return currentValue end,
+    }
+end
+
+function UILibrary:AddLabel(config)
+    if type(config) == "string" then config = { Text = config } end
+    config = config or {}
+    local text = config.Text or config.Title or "Label"
+    local color = config.Color or Theme.TextDim
+    local size = config.Size or Theme.SizeSmall
+    local bold = config.Bold or false
+    local center = config.Center or false
+
+    local lbl = U.New("TextLabel", {
+        Name = "Label", Size = UDim2.new(1, 0, 0, 20), BackgroundTransparency = 1,
+        Text = text, Font = bold and Theme.FontBold or Theme.FontRegular, TextSize = size,
+        TextColor3 = color,
+        TextXAlignment = center and Enum.TextXAlignment.Center or Enum.TextXAlignment.Left,
+        TextWrapped = true, AutomaticSize = Enum.AutomaticSize.Y,
+        LayoutOrder = self._elementCount + 1,
+    }, self._container or self._page)
+    U.Padding(2, 2, 4, 4, lbl)
+    self._elementCount = self._elementCount + 1
+
+    return {
+        SetText = function(t) lbl.Text = tostring(t) end,
+        GetText = function() return lbl.Text end,
+        Instance = lbl,
+    }
+end
+
+function UILibrary:AddDivider(config)
+    config = config or {}
+    local div = U.New("Frame", {
+        Name = "Divider", Size = UDim2.new(1, -20, 0, 1), Position = UDim2.new(0, 10, 0, 0),
+        BackgroundColor3 = config.Color or Theme.Border, BackgroundTransparency = 0.5,
+        BorderSizePixel = 0, LayoutOrder = self._elementCount + 1,
+    }, self._container or self._page)
+    self._elementCount = self._elementCount + 1
+    return div
+end
+
+function UILibrary:AddKeybind(config, callback)
+    config = config or {}
+    local name = config.Name or "Keybind"
+    local default = config.Default or Enum.KeyCode.RightShift
+    local flag = config.Flag or name
+    local current = default
+    local listening = false
+
+    local frame = U.New("Frame", {
+        Name = "Keybind_" .. name, Size = UDim2.new(1, 0, 0, 38),
+        BackgroundColor3 = Theme.Surface2, BorderSizePixel = 0, LayoutOrder = self._elementCount + 1,
+    }, self._container or self._page)
+    U.Corner(Theme.RadiusSmall, frame)
+    self._elementCount = self._elementCount + 1
+
+    U.New("TextLabel", {
+        Size = UDim2.new(0.5, 0, 1, 0), Position = UDim2.new(0, 12, 0, 0),
+        BackgroundTransparency = 1, Text = name, Font = Theme.FontMedium,
+        TextSize = Theme.SizeMedium, TextColor3 = Theme.Text, TextXAlignment = Enum.TextXAlignment.Left,
+    }, frame)
+
+    local keyBtn = U.New("TextButton", {
+        Size = UDim2.new(0, 80, 0, 26), Position = UDim2.new(1, -92, 0.5, -13),
+        BackgroundColor3 = Theme.SurfaceDeep, BorderSizePixel = 0, Text = current.Name,
+        Font = Theme.FontBold, TextSize = Theme.SizeSmall, TextColor3 = Theme.Accent, AutoButtonColor = false,
+    }, frame)
+    U.Corner(Theme.RadiusSmall, keyBtn)
+
+    keyBtn.MouseButton1Click:Connect(function()
+        listening = true
+        keyBtn.Text = "..."
+        keyBtn.TextColor3 = Theme.Warning
+    end)
+
+    Svc.UIS.InputBegan:Connect(function(input, gp)
+        if listening and not gp and input.UserInputType == Enum.UserInputType.Keyboard then
+            current = input.KeyCode
+            keyBtn.Text = current.Name
+            keyBtn.TextColor3 = Theme.Accent
+            listening = false
+            if callback then pcall(callback, current) end
+        elseif not listening and input.KeyCode == current and not gp then
+            if callback then pcall(callback, current) end
+        end
+    end)
+
+    self.flags[flag] = { type = "keybind", value = current }
+    return {
+        Get = function() return current end,
+        Set = function(k) current = k; keyBtn.Text = k.Name; if callback then pcall(callback, k) end end,
+    }
+end
+
+function UILibrary:AddInput(config, callback)
+    config = config or {}
+    local name = config.Name or "Input"
+    local placeholder = config.Placeholder or "Nhập..."
+    local default = config.Default or ""
+
+    local frame = U.New("Frame", {
+        Name = "Input_" .. name, Size = UDim2.new(1, 0, 0, 40),
+        BackgroundColor3 = Theme.Surface2, BorderSizePixel = 0, LayoutOrder = self._elementCount + 1,
+    }, self._container or self._page)
+    U.Corner(Theme.RadiusSmall, frame)
+    local inputStroke = U.Stroke(Theme.Border, 1, 0.7, frame)
+    self._elementCount = self._elementCount + 1
+
+    U.New("TextLabel", {
+        Size = UDim2.new(0.4, 0, 1, 0), Position = UDim2.new(0, 12, 0, 0),
+        BackgroundTransparency = 1, Text = name, Font = Theme.FontMedium,
+        TextSize = Theme.SizeSmall, TextColor3 = Theme.Text, TextXAlignment = Enum.TextXAlignment.Left,
+    }, frame)
+
+    local box = U.New("TextBox", {
+        Size = UDim2.new(0.55, -12, 0, 26), Position = UDim2.new(0.45, 0, 0.5, -13),
+        BackgroundColor3 = Theme.SurfaceDeep, BorderSizePixel = 0, Text = default,
+        PlaceholderText = placeholder, PlaceholderColor3 = Theme.TextMuted,
+        Font = Theme.FontRegular, TextSize = Theme.SizeSmall, TextColor3 = Theme.Text,
+        TextXAlignment = Enum.TextXAlignment.Left, ClearTextOnFocus = false,
+    }, frame)
+    U.Corner(Theme.RadiusSmall, box)
+    U.Padding(0, 0, 8, 8, box)
+
+    box.Focused:Connect(function() U.Tween(inputStroke, Theme.AnimFast, { Color = Theme.Accent, Transparency = 0.3 }) end)
+    box.FocusLost:Connect(function()
+        U.Tween(inputStroke, Theme.AnimFast, { Color = Theme.Border, Transparency = 0.7 })
+        if callback then pcall(callback, box.Text) end
+    end)
+
+    return {
+        Set = function(v) box.Text = tostring(v) end,
+        Get = function() return box.Text end,
+        Instance = box,
+    }
+end
+
+function UILibrary:AddColorPicker(config, callback)
+    config = config or {}
+    local name = config.Name or "Color"
+    local default = config.Default or Color3.fromRGB(0, 190, 255)
+
+    local frame = U.New("Frame", {
+        Name = "ColorPicker_" .. name, Size = UDim2.new(1, 0, 0, 38),
+        BackgroundColor3 = Theme.Surface2, BorderSizePixel = 0, LayoutOrder = self._elementCount + 1,
+    }, self._container or self._page)
+    U.Corner(Theme.RadiusSmall, frame)
+    self._elementCount = self._elementCount + 1
+
+    U.New("TextLabel", {
+        Size = UDim2.new(1, -70, 1, 0), Position = UDim2.new(0, 12, 0, 0),
+        BackgroundTransparency = 1, Text = name, Font = Theme.FontMedium,
+        TextSize = Theme.SizeMedium, TextColor3 = Theme.Text, TextXAlignment = Enum.TextXAlignment.Left,
+    }, frame)
+
+    local swatch = U.New("TextButton", {
+        Size = UDim2.new(0, 44, 0, 26), Position = UDim2.new(1, -56, 0.5, -13),
+        BackgroundColor3 = default, BorderSizePixel = 0, Text = "", AutoButtonColor = false,
+    }, frame)
+    U.Corner(Theme.RadiusSmall, swatch)
+    U.Stroke(Theme.Border, 1, 0.3, swatch)
+
+    local currentColor = default
+    local function parseHex(hex)
+        hex = hex:gsub("#", "")
+        local r = tonumber(hex:sub(1, 2), 16) or 0
+        local g = tonumber(hex:sub(3, 4), 16) or 0
+        local b = tonumber(hex:sub(5, 6), 16) or 0
+        return Color3.fromRGB(r, g, b)
+    end
+
+    swatch.MouseButton1Click:Connect(function()
+        Modal.Prompt({
+            Title = "Nhập mã màu HEX", Placeholder = "#00BEFF",
+            Default = string.format("#%02X%02X%02X",
+                math.floor(currentColor.R * 255), math.floor(currentColor.G * 255), math.floor(currentColor.B * 255)),
+            OnSubmit = function(hex)
+                local color = parseHex(hex)
+                currentColor = color
+                swatch.BackgroundColor3 = color
+                if callback then pcall(callback, color) end
+            end,
+        })
+    end)
+
+    return {
+        Set = function(c) currentColor = c; swatch.BackgroundColor3 = c; if callback then pcall(callback, c) end end,
+        Get = function() return currentColor end,
+    }
+end
+
+getgenv().ChuppyUI = UILibrary
+
+print("[Chuppy UI] ✅ LƯỢT 1/10 hoàn tất — UI Library loaded")
+]==])()
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- 🐾 CHUPPY HUB V2 — PHẦN 2/10: CORE SYSTEM (State, Config, Remote, Webhook...)
+-- ═══════════════════════════════════════════════════════════════════════════════
+loadstring([==[
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [2.0] BỔ SUNG SERVICES + CONSTANTS
+-- ═══════════════════════════════════════════════════════════════════════════════
+local Players              = game:GetService("Players")
+local ReplicatedStorage    = game:GetService("ReplicatedStorage")
+local Workspace            = game:GetService("Workspace")
+local RunService           = game:GetService("RunService")
+local UserInputService     = game:GetService("UserInputService")
+local TweenService         = game:GetService("TweenService")
+local HttpService          = game:GetService("HttpService")
+local TeleportService      = game:GetService("TeleportService")
+local CollectionService    = game:GetService("CollectionService")
+local Lighting             = game:GetService("Lighting")
+local StarterGui           = game:GetService("StarterGui")
+local VirtualUser          = game:GetService("VirtualUser")
+local VirtualInputManager  = game:GetService("VirtualInputManager")
+local CoreGui              = game:GetService("CoreGui")
+local GuiService           = game:GetService("GuiService")
+local ContextActionService = game:GetService("ContextActionService")
+local SoundService         = game:GetService("SoundService")
+
+local LP     = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+
+-- Reuse theme từ lượt 1
+local Theme = getgenv().ChuppyTheme or {}
+local UILibrary = getgenv().ChuppyUI
+local Notification = getgenv().ChuppyNotification
+local Modal = getgenv().ChuppyModal
+
+-- ═══ CONSTANTS ═══
+local Constant = {
+    PLACE_IDS = {
+        SEA1      = { 2753915549, 85211729168715 },
+        SEA2      = { 4442272183, 79091703265657 },
+        SEA3      = { 7449423635, 100117331123089 },
+    },
+    CONFIG_FOLDER = "ChuppyHub",
+    CONFIG_FILE   = "config.json",
+    STATS_FILE    = "stats.json",
+    TICK_RATE        = 0.1,
+    FAST_TICK        = 0.05,
+    SLOW_TICK        = 0.5,
+    CONFIG_AUTOSAVE  = 30,
+    MAX_LEVEL     = 2850,
+    MAX_BELI_CAP  = 999999999,
+    BASE_WALKSPEED = 16,
+    BASE_JUMPPOWER = 50,
+    WEBHOOK_COOLDOWN = 2,
+    WEBHOOK_MAX_QUEUE = 10,
+    NOTI_SPAM_COOLDOWN = 3,
+}
+getgenv().ChuppyConstant = Constant
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [2.1] GLOBAL STATE MANAGEMENT
+-- ═══════════════════════════════════════════════════════════════════════════════
+local State = {
+    -- Runtime
+    Running     = true, Unloaded    = false, Version     = "2.0.0",
+    StartTime   = tick(), LoadTime    = os.date("%Y-%m-%d %H:%M:%S"),
+    -- Feature toggles
+    AutoFarm = false, AutoFarmBoss = false, AutoFarmMaterial = false, AutoFarmChest = false, MobAura = false,
+    AutoRaid = false, AutoSeaBeast = false, AutoLeviathan = false, KillAura = false, AutoFish = false,
+    AutoRace = false, AutoCDK = false, ESPEnabled = false, AimbotEnabled = false, AutoHaki = true,
+    AutoStoreFruit = false, AutoRedeem = false,
+    -- Player data cache
+    PlayerData = { Level = 0, Beli = 0, Fragments = 0, DevilFruit = "", Race = "", Team = "", LastUpdate = 0 },
+    -- Runtime stats
+    Stats = { MobsKilled = 0, BossesKilled = 0, ChestsCollected = 0, FruitsStored = 0, RaidsCompleted = 0, Deaths = 0, DamageDealt = 0, SessionTime = 0 },
+    -- Current targets
+    CurrentTarget = nil, CurrentQuest = nil, CurrentBoss = nil, CurrentMaterial = nil, CurrentWeapon = "Melee", CurrentFarmMode = "Quest",
+    -- Internal
+    _connections = {}, _threads = {}, _cache = {}, _cooldowns = {}, _notiSpam = {},
+}
+getgenv().ChuppyState = State
+
+-- ═══ CONNECTION TRACKING ═══
+local function Track(conn)
+    if conn then table.insert(State._connections, conn) end
+    return conn
+end
+
+local function TrackThread(thread)
+    if thread then table.insert(State._threads, thread) end
+    return thread
+end
+
+-- ═══ SAFE THREAD SPAWN ═══
+local function SafeSpawn(fn, ...)
+    local args = { ... }
+    local thread = task.spawn(function()
+        local ok, err = pcall(fn, table.unpack(args))
+        if not ok then warn("[Chuppy] Thread error:", err) end
+    end)
+    TrackThread(thread)
+    return thread
+end
+
+-- ═══ COOLDOWN HELPER ═══
+local function CheckCooldown(key, duration)
+    if not State._cooldowns[key] then State._cooldowns[key] = tick(); return true end
+    if tick() - State._cooldowns[key] >= duration then State._cooldowns[key] = tick(); return true end
+    return false
+end
+
+-- ═══ NOTIFY ═══
+local function Notify(title, desc, notiType, duration)
+    notiType = notiType or "info"
+    duration = duration or 4
+    local key = tostring(title) .. "|" .. tostring(desc or "")
+    local now = tick()
+    if State._notiSpam[key] and (now - State._notiSpam[key]) < Constant.NOTI_SPAM_COOLDOWN then return end
+    State._notiSpam[key] = now
+    if Notification and Notification.Show then
+        return Notification.Show({ Type = notiType, Title = title, Desc = desc, Duration = duration })
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [2.2] PLAYER / CHARACTER UTILITIES
+-- ═══════════════════════════════════════════════════════════════════════════════
+local function GetCharacter()
+    local char = LP.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then return char end
+    return nil
+end
+local function GetHRP() local char = GetCharacter(); return char and char:FindFirstChild("HumanoidRootPart") end
+local function GetHumanoid() local char = GetCharacter(); return char and char:FindFirstChildOfClass("Humanoid") end
+local function IsAlive() local hum = GetHumanoid(); return hum and hum.Health > 0 end
+local function GetPosition() local hrp = GetHRP(); return hrp and hrp.Position or Vector3.zero end
+local function GetCFrame() local hrp = GetHRP(); return hrp and hrp.CFrame or CFrame.new() end
+
+local function GetDataFolder() return LP:FindFirstChild("Data") end
+local function GetLevel() local data = GetDataFolder(); local lvl = data and data:FindFirstChild("Level"); return lvl and lvl.Value or 0 end
+local function GetBeli() local data = GetDataFolder(); local beli = data and data:FindFirstChild("Beli"); return beli and beli.Value or 0 end
+local function GetFragments() local data = GetDataFolder(); local frag = data and data:FindFirstChild("Fragments"); return frag and frag.Value or 0 end
+local function GetDevilFruit() local data = GetDataFolder(); local df = data and data:FindFirstChild("DevilFruit"); return df and df.Value or "" end
+local function GetRace() local data = GetDataFolder(); local race = data and data:FindFirstChild("Race"); return race and race.Value or "" end
+local function GetTeam() local team = LP.Team; return team and team.Name or "None" end
+
+local function UpdatePlayerData()
+    local now = tick()
+    if now - State.PlayerData.LastUpdate < 0.5 then return end
+    State.PlayerData.Level      = GetLevel()
+    State.PlayerData.Beli       = GetBeli()
+    State.PlayerData.Fragments  = GetFragments()
+    State.PlayerData.DevilFruit = GetDevilFruit()
+    State.PlayerData.Race       = GetRace()
+    State.PlayerData.Team       = GetTeam()
+    State.PlayerData.LastUpdate = now
+end
+
+local function GetWorld()
+    local pid = game.PlaceId
+    for _, id in ipairs(Constant.PLACE_IDS.SEA1) do if pid == id then return 1 end end
+    for _, id in ipairs(Constant.PLACE_IDS.SEA2) do if pid == id then return 2 end end
+    for _, id in ipairs(Constant.PLACE_IDS.SEA3) do if pid == id then return 3 end end
+    return 0
+end
+State.World = GetWorld()
+
+local PlayerUtils = {
+    GetCharacter = GetCharacter, GetHRP = GetHRP, GetHumanoid = GetHumanoid, IsAlive = IsAlive,
+    GetPosition = GetPosition, GetCFrame = GetCFrame, GetLevel = GetLevel, GetBeli = GetBeli,
+    GetFragments = GetFragments, GetDevilFruit = GetDevilFruit, GetRace = GetRace, GetTeam = GetTeam,
+    UpdateData = UpdatePlayerData, GetWorld = GetWorld,
+}
+getgenv().ChuppyPlayer = PlayerUtils
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [2.3] CONFIG SYSTEM
+-- ═══════════════════════════════════════════════════════════════════════════════
+local Config = {}
+Config.SaveKeys = {
+    "AutoFarm", "AutoFarmBoss", "AutoFarmMaterial", "AutoFarmChest", "AutoHaki", "AutoStoreFruit", "CurrentWeapon", "CurrentFarmMode",
+    "AutoRaid", "AutoSeaBeast", "AutoLeviathan", "AutoRace", "AutoCDK", "AutoRedeem", "KillAura", "AimbotEnabled", "ESPFruit", "ESPChest",
+    "WalkSpeed", "JumpPower", "FarmSpeed", "MobAuraRange", "AimbotFOV", "BringMobDistance", "SelectedBoss", "SelectedMaterial", "SelectedRaid",
+    "WebhookURL", "WebhookEnabled", "WebhookNotiFruit", "WebhookNotiBoss", "NoClip", "FullBright", "WalkWater",
+}
+
+local function EnsureFolder()
+    pcall(function() if not isfolder(Constant.CONFIG_FOLDER) then makefolder(Constant.CONFIG_FOLDER) end end)
+end
+local function GetConfigPath() return Constant.CONFIG_FOLDER .. "/" .. Constant.CONFIG_FILE end
+
+function Config.Save()
+    if not writefile then return false end
+    EnsureFolder()
+    local data = {}
+    for _, key in ipairs(Config.SaveKeys) do if State[key] ~= nil then data[key] = State[key] end end
+    local ok, err = pcall(function() writefile(GetConfigPath(), HttpService:JSONEncode(data)) end)
+    if not ok then warn("[Chuppy Config] Lỗi lưu config:", err); return false end
+    return true
+end
+
+function Config.Load()
+    if not readfile or not isfile then return false end
+    EnsureFolder()
+    local path = GetConfigPath()
+    if not isfile(path) then return false end
+    local ok, data = pcall(function() return HttpService:JSONDecode(readfile(path)) end)
+    if not ok or type(data) ~= "table" then warn("[Chuppy Config] Lỗi đọc config:", data); return false end
+    for key, value in pairs(data) do if State[key] ~= nil then State[key] = value end end
+    return true
+end
+
+function Config.Reset()
+    if not delfile then return false end
+    pcall(function() if isfile(GetConfigPath()) then delfile(GetConfigPath()) end end)
+    return true
+end
+
+function Config.ToJSON()
+    local data = {}
+    for _, key in ipairs(Config.SaveKeys) do if State[key] ~= nil then data[key] = State[key] end end
+    local ok, json = pcall(function() return HttpService:JSONEncode(data) end)
+    return ok and json or ""
+end
+
+function Config.FromJSON(json)
+    local ok, data = pcall(function() return HttpService:JSONDecode(json) end)
+    if not ok or type(data) ~= "table" then return false end
+    for key, value in pairs(data) do if State[key] ~= nil then State[key] = value end end
+    return true
+end
+
+local Stats = {}
+function Stats.Save()
+    if not writefile then return false end
+    EnsureFolder()
+    local path = Constant.CONFIG_FOLDER .. "/" .. Constant.STATS_FILE
+    local ok = pcall(function() writefile(path, HttpService:JSONEncode(State.Stats)) end)
+    return ok
+end
+
+function Stats.Load()
+    if not readfile or not isfile then return false end
+    local path = Constant.CONFIG_FOLDER .. "/" .. Constant.STATS_FILE
+    if not isfile(path) then return false end
+    local ok, data = pcall(function() return HttpService:JSONDecode(readfile(path)) end)
+    if not ok or type(data) ~= "table" then return false end
+    for k, v in pairs(data) do if type(v) == "number" then State.Stats[k] = v end end
+    return true
+end
+
+function Stats.Reset()
+    for k in pairs(State.Stats) do State.Stats[k] = 0 end
+    Stats.Save()
+end
+
+SafeSpawn(function()
+    while State.Running do
+        task.wait(Constant.CONFIG_AUTOSAVE)
+        if not State.Running then break end
+        pcall(Config.Save)
+        pcall(Stats.Save)
+    end
+end)
+
+getgenv().ChuppyConfig = Config
+getgenv().ChuppyStats = Stats
+Config.Load()
+Stats.Load()
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [2.4] REMOTE WRAPPER
+-- ═══════════════════════════════════════════════════════════════════════════════
+local Remote = {}
+local function GetCommF() local remotes = ReplicatedStorage:FindFirstChild("Remotes"); return remotes and remotes:FindFirstChild("CommF_") end
+local function GetCommE() local remotes = ReplicatedStorage:FindFirstChild("Remotes"); return remotes and remotes:FindFirstChild("CommE") end
+
+function Remote.Invoke(...)
+    local commF = GetCommF()
+    if not commF then return nil end
+    local args = { ... }
+    local unpackFn = table.unpack or unpack
+    local ok, res = pcall(function() return commF:InvokeServer(unpackFn(args)) end)
+    if not ok then warn("[Chuppy Remote] Invoke error:", res); return nil end
+    return res
+end
+
+function Remote.FireCommE(...)
+    local commE = GetCommE()
+    if not commE then return false end
+    local args = { ... }
+    local unpackFn = table.unpack or unpack
+    local ok = pcall(function() commE:FireServer(unpackFn(args)) end)
+    return ok
+end
+
+function Remote.Fire(remote, ...)
+    if not remote then return false end
+    local args = { ... }
+    local unpackFn = table.unpack or unpack
+    local ok = pcall(function() remote:FireServer(unpackFn(args)) end)
+    return ok
+end
+
+Remote.StartQuest  = function(questName, level) return Remote.Invoke("StartQuest", questName, level) end
+Remote.AbandonQuest = function() return Remote.Invoke("AbandonQuest") end
+Remote.BuyHaki      = function(haki) return Remote.Invoke("BuyHaki", haki) end
+Remote.Buso         = function() return Remote.Invoke("Buso") end
+Remote.StoreFruit   = function(name, tool) return Remote.Invoke("StoreFruit", name, tool) end
+Remote.LoadFruit    = function(name) return Remote.Invoke("LoadItem", name) end
+Remote.BuyBoat      = function(boat) return Remote.Invoke("BuyBoat", boat) end
+
+getgenv().ChuppyRemote = Remote
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [2.5] MONSTER / MOB HELPERS
+-- ═══════════════════════════════════════════════════════════════════════════════
+local Monster = {}
+
+function Monster.Find(name)
+    local search = name and string.lower(name) or nil
+    local enemiesFolder = Workspace:FindFirstChild("Enemies")
+    if enemiesFolder then
+        for _, v in pairs(enemiesFolder:GetChildren()) do
+            if v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+                if not search or string.find(string.lower(v.Name), search, 1, true) then return v end
+            end
+        end
+    end
+    if search then
+        for _, v in pairs(Workspace:GetChildren()) do
+            if v:IsA("Model") and string.find(string.lower(v.Name), search, 1, true) and v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then return v end
+        end
+    end
+    if name then
+        local rsMob = ReplicatedStorage:FindFirstChild(name)
+        if rsMob and rsMob:FindFirstChild("HumanoidRootPart") then return rsMob end
+    end
+    return nil
+end
+
+function Monster.FindNearest(maxDistance)
+    maxDistance = maxDistance or 5000
+    local hrp = GetHRP()
+    if not hrp then return nil end
+    local enemiesFolder = Workspace:FindFirstChild("Enemies")
+    if not enemiesFolder then return nil end
+    local nearest, shortest = nil, maxDistance
+    for _, v in pairs(enemiesFolder:GetChildren()) do
+        if v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+            local d = (v.HumanoidRootPart.Position - hrp.Position).Magnitude
+            if d < shortest then shortest = d; nearest = v end
+        end
+    end
+    return nearest
+end
+
+function Monster.FindInRange(range)
+    range = range or 300
+    local hrp = GetHRP()
+    if not hrp then return {} end
+    local list = {}
+    local enemiesFolder = Workspace:FindFirstChild("Enemies")
+    if not enemiesFolder then return list end
+    for _, v in pairs(enemiesFolder:GetChildren()) do
+        if v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+            local d = (v.HumanoidRootPart.Position - hrp.Position).Magnitude
+            if d <= range then table.insert(list, { mob = v, distance = d }) end
+        end
+    end
+    table.sort(list, function(a, b) return a.distance < b.distance end)
+    return list
+end
+
+function Monster.Bring(mob, targetCF)
+    if not mob or not mob:FindFirstChild("HumanoidRootPart") then return end
+    pcall(function()
+        local hrp = mob.HumanoidRootPart
+        local hum = mob:FindFirstChildOfClass("Humanoid")
+        hrp.CFrame = targetCF
+        if hum then hum.JumpPower = 0; hum.WalkSpeed = 0 end
+        hrp.CanCollide = false
+        if not hrp:FindFirstChild("BringLock") then
+            local bv = Instance.new("BodyVelocity")
+            bv.Name = "BringLock"; bv.MaxForce = Vector3.new(1e5, 1e5, 1e5); bv.Velocity = Vector3.zero; bv.Parent = hrp
+        end
+    end)
+end
+
+function Monster.BringAll(mobs, targetCF, radius)
+    radius = radius or 200
+    if not targetCF then return end
+    local hrp = GetHRP()
+    if not hrp then return end
+    for _, mob in ipairs(mobs or {}) do
+        local m = mob.mob or mob
+        if m and m:FindFirstChild("HumanoidRootPart") then
+            local dist = (m.HumanoidRootPart.Position - hrp.Position).Magnitude
+            if dist <= radius then Monster.Bring(m, targetCF) end
+        end
+    end
+end
+
+function Monster.IsAlive(mob)
+    if not mob or not mob.Parent then return false end
+    local hum = mob:FindFirstChildOfClass("Humanoid")
+    return hum and hum.Health > 0
+end
+
+local BOSS_KEYWORDS = { "King", "Lord", "Boss", "Prince", "Queen", "Beast", "Reaper", "Admiral", "Warden", "Leader" }
+function Monster.IsBoss(mob)
+    if not mob then return false end
+    for _, kw in ipairs(BOSS_KEYWORDS) do if string.find(mob.Name, kw, 1, true) then return true end end
+    return false
+end
+
+function Monster.Count()
+    local enemiesFolder = Workspace:FindFirstChild("Enemies")
+    if not enemiesFolder then return 0 end
+    local count = 0
+    for _, v in pairs(enemiesFolder:GetChildren()) do if Monster.IsAlive(v) then count = count + 1 end end
+    return count
+end
+
+function Monster.ClearIgnored()
+    local enemiesFolder = Workspace:FindFirstChild("Enemies")
+    if not enemiesFolder then return end
+    for _, v in pairs(enemiesFolder:GetChildren()) do local ig = v:FindFirstChild("Ignored"); if ig then ig:Destroy() end end
+end
+getgenv().ChuppyMonster = Monster
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [2.6] DISCORD WEBHOOK SYSTEM
+-- ═══════════════════════════════════════════════════════════════════════════════
+local Webhook = {}
+Webhook.__index = Webhook
+local webhookQueue = {}
+local webhookSending = false
+local webhookCooldowns = {}
+
+local WEBHOOK_COLORS = { info = 3447003, success = 5763719, warning = 16776960, danger = 15548997, fruit = 16711935, boss = 16750592, level = 10181046 }
+
+local function BuildEmbed(data)
+    local fields = data.Fields or {}
+    table.insert(fields, { name = "👤 Player", value = "```" .. LP.Name .. "```", inline = true })
+    table.insert(fields, { name = "📊 Level", value = "```" .. tostring(GetLevel()) .. "```", inline = true })
+    table.insert(fields, { name = "🌍 Sea", value = "```" .. tostring(State.World) .. "```", inline = true })
+    return { title = data.Title or "Chuppy Hub", description = data.Description or "", color = data.Color or WEBHOOK_COLORS.info, fields = fields, footer = { text = "Chuppy Hub V2 | " .. os.date("%H:%M:%S") }, timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ") }
+end
+
+local function ProcessQueue()
+    if webhookSending then return end
+    if #webhookQueue == 0 then return end
+    webhookSending = true
+    local item = table.remove(webhookQueue, 1)
+    local url = item.url; local payload = item.payload; local type_ = item.type
+    local req = request or http_request or (syn and syn.request) or (http and http.request)
+    if not req then webhookSending = false; return end
+    SafeSpawn(function()
+        local ok = pcall(function() req({ Url = url, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = HttpService:JSONEncode(payload) }) end)
+        if not ok then warn("[Chuppy Webhook] Send failed") end
+        task.wait(Constant.WEBHOOK_COOLDOWN)
+        webhookSending = false
+        if #webhookQueue > 0 then ProcessQueue() end
+    end)
+end
+
+function Webhook.Send(config)
+    config = config or {}
+    if not State.WebhookEnabled then return end
+    if not State.WebhookURL or State.WebhookURL == "" then return end
+    local type_ = config.Type or "info"
+    local now = tick()
+    if webhookCooldowns[type_] and (now - webhookCooldowns[type_]) < Constant.WEBHOOK_COOLDOWN then return end
+    webhookCooldowns[type_] = now
+    local embed = BuildEmbed({ Title = config.Title, Description = config.Description, Color = config.Color or WEBHOOK_COLORS[type_] or WEBHOOK_COLORS.info, Fields = config.Fields })
+    local content = config.Content or ""
+    if config.Ping then content = "@everyone" end
+    local payload = { content = content, username = "Chuppy Hub V2", avatar_url = "https://cdn.discordapp.com/embed/avatars/0.png", embeds = { embed } }
+    if #webhookQueue >= Constant.WEBHOOK_MAX_QUEUE then table.remove(webhookQueue, 1) end
+    table.insert(webhookQueue, { url = State.WebhookURL, payload = payload, type = type_ })
+    ProcessQueue()
+end
+
+function Webhook.Info(title, desc, fields) Webhook.Send({ Type = "info", Title = title, Description = desc, Fields = fields }) end
+function Webhook.Success(title, desc, fields) Webhook.Send({ Type = "success", Title = title, Description = desc, Fields = fields }) end
+function Webhook.Warning(title, desc, fields) Webhook.Send({ Type = "warning", Title = title, Description = desc, Fields = fields }) end
+function Webhook.Danger(title, desc, fields) Webhook.Send({ Type = "danger", Title = title, Description = desc, Fields = fields }) end
+
+function Webhook.Fruit(fruitName, price)
+    if not State.WebhookNotiFruit then return end
+    Webhook.Send({ Type = "fruit", Title = "🍎 Fruit Found", Description = "Đã tìm thấy **" .. fruitName .. "**", Fields = { { name = "💰 Giá", value = "```" .. tostring(price or "?") .. "```", inline = true } } })
+end
+
+function Webhook.Boss(bossName, drops)
+    if not State.WebhookNotiBoss then return end
+    Webhook.Send({ Type = "boss", Title = "👑 Boss Defeated", Description = "Đã hạ gục **" .. bossName .. "**", Fields = { { name = "🎁 Drops", value = "```" .. tostring(drops or "Không có") .. "```", inline = false } } })
+end
+
+function Webhook.LevelUp(oldLv, newLv) Webhook.Send({ Type = "level", Title = "⬆️ Level Up", Description = "Level: **" .. oldLv .. "** → **" .. newLv .. "**" }) end
+
+function Webhook.Test()
+    if not State.WebhookURL or State.WebhookURL == "" then Notify("Lỗi", "Chưa nhập URL webhook", "danger"); return end
+    Webhook.Send({ Type = "info", Title = "🔔 Test Webhook", Description = "Webhook hoạt động tốt!" })
+end
+getgenv().ChuppyWebhook = Webhook
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [2.7] GLOBAL KEYBIND MANAGER
+-- ═══════════════════════════════════════════════════════════════════════════════
+local KeybindManager = {}
+local binds = {}
+
+function KeybindManager.Bind(action, keyCode, callback)
+    if not keyCode or not callback then return end
+    if not binds[keyCode] then binds[keyCode] = {} end
+    table.insert(binds[keyCode], { action = action, callback = callback })
+end
+
+function KeybindManager.Unbind(action)
+    for keyCode, list in pairs(binds) do
+        for i = #list, 1, -1 do if list[i].action == action then table.remove(list, i) end end
+    end
+end
+
+Track(UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+    local list = binds[input.KeyCode]
+    if not list then return end
+    for _, item in ipairs(list) do pcall(item.callback, input.KeyCode) end
+end))
+
+KeybindManager.Bind("ToggleUI", Enum.KeyCode.RightShift, function()
+    local screenGui = getgenv().ChuppyScreenGui
+    if not screenGui then return end
+    local main = screenGui:FindFirstChild("MainWindow")
+    if main then main.Visible = not main.Visible end
+end)
+
+KeybindManager.Bind("ToggleAimbot", Enum.KeyCode.L, function()
+    State.AimbotEnabled = not State.AimbotEnabled
+    Notify("Aimbot", State.AimbotEnabled and "Đã BẬT" or "Đã TẮT", State.AimbotEnabled and "success" or "warning")
+end)
+
+KeybindManager.Bind("ClearTarget", Enum.KeyCode.P, function() State.CurrentTarget = nil; Notify("Aimbot", "Đã xoá mục tiêu", "info") end)
+KeybindManager.Bind("PanicStop", Enum.KeyCode.End, function() State.AutoFarm = false; State.MobAura = false; State.KillAura = false; Notify("Panic", "Đã dừng tất cả farm", "danger") end)
+getgenv().ChuppyKeybind = KeybindManager
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [2.8] NOTIFICATION QUEUE
+-- ═══════════════════════════════════════════════════════════════════════════════
+local NotiQueue = {}
+NotiQueue.queue = {}
+NotiQueue.processing = false
+NotiQueue.interval = 0.8
+
+function NotiQueue.Push(config)
+    table.insert(NotiQueue.queue, config)
+    if #NotiQueue.queue > 20 then table.remove(NotiQueue.queue, 1) end
+    if not NotiQueue.processing then NotiQueue.Process() end
+end
+
+function NotiQueue.Process()
+    if NotiQueue.processing then return end
+    NotiQueue.processing = true
+    SafeSpawn(function()
+        while #NotiQueue.queue > 0 do
+            local item = table.remove(NotiQueue.queue, 1)
+            if Notification and Notification.Show then pcall(Notification.Show, item) end
+            task.wait(NotiQueue.interval)
+        end
+        NotiQueue.processing = false
+    end)
+end
+getgenv().ChuppyNotiQueue = NotiQueue
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [2.9] AUTO REJOIN + SERVER HOP
+-- ═══════════════════════════════════════════════════════════════════════════════
+local ServerManager = {}
+
+function ServerManager.Rejoin()
+    Notify("Server", "Đang rejoin...", "info")
+    task.delay(0.5, function() pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LP) end) end)
+end
+
+function ServerManager.Hop()
+    local lastHop = State._cooldowns["serverhop"]
+    if lastHop and (tick() - lastHop) < 15 then Notify("Server", "Vui lòng đợi " .. math.ceil(15 - (tick() - lastHop)) .. "s", "warning"); return end
+    State._cooldowns["serverhop"] = tick()
+    Notify("Server", "Đang tìm server...", "info")
+    SafeSpawn(function()
+        local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+        local ok, res = pcall(function() return HttpService:JSONDecode(game:HttpGet(url)) end)
+        if not ok or not res or not res.data then Notify("Server", "Không tìm thấy server", "danger"); return end
+        for _, srv in ipairs(res.data) do
+            if srv.id ~= game.JobId and srv.playing < srv.maxPlayers then
+                pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, srv.id, LP) end)
+                return
+            end
+        end
+        Notify("Server", "Không có server trống", "warning")
+    end)
+end
+
+Track(LP.OnTeleport:Connect(function(state)
+    if state == Enum.TeleportState.Started and State.AutoRejoinDisconnect then pcall(Config.Save); pcall(Stats.Save) end
+end))
+
+SafeSpawn(function()
+    while State.Running do
+        task.wait(1)
+        if not State.AutoRejoinDisconnect then continue end
+        local ok = pcall(function()
+            local promptGui = LP:FindFirstChild("PlayerGui") and LP.PlayerGui:FindFirstChild("RobloxPromptGui")
+            if promptGui then
+                local overlay = promptGui:FindFirstChild("promptOverlay")
+                if overlay then Notify("Disconnect", "Đang rejoin...", "danger"); ServerManager.Rejoin() end
+            end
+        end)
+    end
+end)
+getgenv().ChuppyServer = ServerManager
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [2.10] INIT + EXPORTS
+-- ═══════════════════════════════════════════════════════════════════════════════
+UpdatePlayerData()
+SafeSpawn(function() while State.Running do task.wait(1); pcall(UpdatePlayerData) end end)
+SafeSpawn(function()
+    local lastSave = tick()
+    while State.Running do
+        task.wait(5)
+        State.Stats.SessionTime = math.floor(tick() - State.StartTime)
+        if tick() - lastSave >= 30 then pcall(Stats.Save); lastSave = tick() end
+    end
+end)
+pcall(function() game:BindToClose(function() pcall(Config.Save); pcall(Stats.Save) end) end)
+
+getgenv().Chuppy = getgenv().Chuppy or {}
+local Chuppy = getgenv().Chuppy
+
+Chuppy.State        = State
+Chuppy.Constant     = Constant
+Chuppy.Config       = Config
+Chuppy.Stats        = Stats
+Chuppy.Remote       = Remote
+Chuppy.Monster      = Monster
+Chuppy.Webhook      = Webhook
+Chuppy.Keybind      = KeybindManager
+Chuppy.NotiQueue    = NotiQueue
+Chuppy.Server       = ServerManager
+Chuppy.Player       = PlayerUtils
+
+Chuppy.Track        = Track
+Chuppy.SafeSpawn    = SafeSpawn
+Chuppy.Notify       = Notify
+Chuppy.CheckCooldown = CheckCooldown
+
+print("[Chuppy Core] ✅ LƯỢT 2/10 hoàn tất — Core System + Config + Webhook")
+]==])()
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- 🐾 CHUPPY HUB V2 — PHẦN 3/10: QUEST DATABASE & AUTO FARM LEVEL
+-- ═══════════════════════════════════════════════════════════════════════════════
+loadstring([==[
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local VirtualUser = game:GetService("VirtualUser")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local LP = Players.LocalPlayer
+
+-- Lấy các biến toàn cục từ Phần 2
+local State = getgenv().ChuppyState
+local Notify = getgenv().Chuppy.Notify
+local Track = getgenv().Chuppy.Track
+local SafeSpawn = getgenv().Chuppy.SafeSpawn
+local CheckCooldown = getgenv().Chuppy.CheckCooldown
+local PlayerUtils = getgenv().ChuppyPlayer
+local Monster = getgenv().ChuppyMonster
+local Remote = getgenv().ChuppyRemote
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [3.0] QUEST DATABASE
+-- ═══════════════════════════════════════════════════════════════════════════════
+local QuestDB = {
+    -- ═══ SEA 1 ═══
+    { minLv=1,   maxLv=9,   world=1, mob="Bandit",              quest="BanditQuest1",   qlv=1, island="Starter Island", questCF=CFrame.new(1059.37, 15.44, 1550.42), mobCF=CFrame.new(1045.96, 27.00, 1560.82) },
+    { minLv=10,  maxLv=14,  world=1, mob="Monkey",              quest="JungleQuest",    qlv=1, island="Jungle",         questCF=CFrame.new(-1598.08, 35.55, 153.37), mobCF=CFrame.new(-1448.51, 67.85, 11.46) },
+    { minLv=15,  maxLv=29,  world=1, mob="Gorilla",             quest="JungleQuest",    qlv=2, island="Jungle",         questCF=CFrame.new(-1598.08, 35.55, 153.37), mobCF=CFrame.new(-1129.88, 40.46, -525.42) },
+    { minLv=30,  maxLv=39,  world=1, mob="Pirate",              quest="BuggyQuest1",    qlv=1, island="Pirate Village", questCF=CFrame.new(-1141.07, 4.10, 3831.54), mobCF=CFrame.new(-1103.51, 13.75, 3896.09) },
+    { minLv=40,  maxLv=59,  world=1, mob="Brute",               quest="BuggyQuest1",    qlv=2, island="Pirate Village", questCF=CFrame.new(-1141.07, 4.10, 3831.54), mobCF=CFrame.new(-1140.08, 14.80, 4322.92) },
+    { minLv=60,  maxLv=74,  world=1, mob="Desert Bandit",       quest="DesertQuest",    qlv=1, island="Desert",         questCF=CFrame.new(894.48, 5.14, 4392.43),   mobCF=CFrame.new(924.79, 6.44, 4481.58) },
+    { minLv=75,  maxLv=89,  world=1, mob="Desert Officer",      quest="DesertQuest",    qlv=2, island="Desert",         questCF=CFrame.new(894.48, 5.14, 4392.43),   mobCF=CFrame.new(1608.28, 8.61, 4371.00) },
+    { minLv=90,  maxLv=99,  world=1, mob="Snow Bandit",         quest="SnowQuest",      qlv=1, island="Snow Island",    questCF=CFrame.new(1389.74, 88.15, -1298.90),mobCF=CFrame.new(1354.34, 87.27, -1393.94) },
+    { minLv=100, maxLv=119, world=1, mob="Snowman",             quest="SnowQuest",      qlv=2, island="Snow Island",    questCF=CFrame.new(1389.74, 88.15, -1298.90),mobCF=CFrame.new(1201.64, 144.57, -1550.06) },
+    { minLv=120, maxLv=149, world=1, mob="Chief Petty Officer", quest="MarineQuest2",   qlv=1, island="Marine Fortress",questCF=CFrame.new(-5039.58, 27.35, 4324.68),mobCF=CFrame.new(-4881.23, 22.65, 4273.75) },
+    { minLv=150, maxLv=174, world=1, mob="Sky Bandit",          quest="SkyQuest",       qlv=1, island="Sky Island",     questCF=CFrame.new(-4839.53, 716.36, -2619.44),mobCF=CFrame.new(-4953.20, 295.74, -2899.22) },
+    { minLv=175, maxLv=189, world=1, mob="Dark Master",         quest="SkyQuest",       qlv=2, island="Sky Island",     questCF=CFrame.new(-4839.53, 716.36, -2619.44),mobCF=CFrame.new(-5259.84, 391.39, -2229.03) },
+    { minLv=190, maxLv=209, world=1, mob="Prisoner",            quest="PrisonerQuest",  qlv=1, island="Prison",         questCF=CFrame.new(5308.93, 1.65, 475.12),   mobCF=CFrame.new(5098.97, -0.32, 474.23) },
+    { minLv=210, maxLv=249, world=1, mob="Dangerous Prisoner",  quest="PrisonerQuest",  qlv=2, island="Prison",         questCF=CFrame.new(5308.93, 1.65, 475.12),   mobCF=CFrame.new(5654.56, 15.63, 866.29) },
+    { minLv=250, maxLv=274, world=1, mob="Toga Warrior",        quest="ColosseumQuest", qlv=1, island="Colosseum",      questCF=CFrame.new(-1580.04, 6.35, -2986.47),mobCF=CFrame.new(-1820.21, 51.68, -2740.66) },
+    { minLv=275, maxLv=299, world=1, mob="Gladiator",           quest="ColosseumQuest", qlv=2, island="Colosseum",      questCF=CFrame.new(-1580.04, 6.35, -2986.47),mobCF=CFrame.new(-1292.83, 56.38, -3339.03) },
+    { minLv=300, maxLv=324, world=1, mob="Military Soldier",    quest="MagmaQuest",     qlv=1, island="Magma Village",  questCF=CFrame.new(-5313.37, 10.95, 8515.29),mobCF=CFrame.new(-5411.16, 11.08, 8454.29) },
+    { minLv=325, maxLv=374, world=1, mob="Military Spy",        quest="MagmaQuest",     qlv=2, island="Magma Village",  questCF=CFrame.new(-5313.37, 10.95, 8515.29),mobCF=CFrame.new(-5802.86, 86.26, 8828.85) },
+    { minLv=375, maxLv=399, world=1, mob="Fishman Warrior",     quest="FishmanQuest",   qlv=1, island="Underwater City",questCF=CFrame.new(61122.65, 18.49, 1569.39),mobCF=CFrame.new(60878.30, 18.48, 1543.75) },
+    { minLv=400, maxLv=449, world=1, mob="Fishman Commando",    quest="FishmanQuest",   qlv=2, island="Underwater City",questCF=CFrame.new(61122.65, 18.49, 1569.39),mobCF=CFrame.new(61922.63, 18.48, 1493.93) },
+    { minLv=450, maxLv=474, world=1, mob="God's Guard",         quest="SkyExp1Quest",   qlv=1, island="Upper Sky",      questCF=CFrame.new(-4721.88, 843.87, -1949.96),mobCF=CFrame.new(-4710.04, 845.27, -1927.30) },
+    { minLv=475, maxLv=524, world=1, mob="Shanda",              quest="SkyExp1Quest",   qlv=2, island="Upper Sky",      questCF=CFrame.new(-7859.09, 5544.19, -381.47),mobCF=CFrame.new(-7678.48, 5566.40, -497.21) },
+    { minLv=525, maxLv=549, world=1, mob="Royal Squad",         quest="SkyExp2Quest",   qlv=1, island="Upper Sky",      questCF=CFrame.new(-7906.81, 5634.66, -1411.99),mobCF=CFrame.new(-7624.25, 5658.13, -1467.35) },
+    { minLv=550, maxLv=624, world=1, mob="Royal Soldier",       quest="SkyExp2Quest",   qlv=2, island="Upper Sky",      questCF=CFrame.new(-7906.81, 5634.66, -1411.99),mobCF=CFrame.new(-7836.75, 5645.66, -1790.62) },
+    { minLv=625, maxLv=649, world=1, mob="Galley Pirate",       quest="FountainQuest",  qlv=1, island="Fountain City",  questCF=CFrame.new(5259.81, 37.35, 4050.02), mobCF=CFrame.new(5551.02, 78.90, 3930.41) },
+    { minLv=650, maxLv=699, world=1, mob="Galley Captain",      quest="FountainQuest",  qlv=2, island="Fountain City",  questCF=CFrame.new(5259.81, 37.35, 4050.02), mobCF=CFrame.new(5441.95, 42.50, 4950.09) },
+    -- ═══ SEA 2 ═══
+    { minLv=700,  maxLv=724,  world=2, mob="Raider",             quest="Area1Quest",         qlv=1, island="Kingdom of Rose", questCF=CFrame.new(-429.54, 71.76, 1836.18), mobCF=CFrame.new(-728.32, 52.77, 2345.77) },
+    { minLv=725,  maxLv=774,  world=2, mob="Mercenary",          quest="Area1Quest",         qlv=2, island="Kingdom of Rose", questCF=CFrame.new(-429.54, 71.76, 1836.18), mobCF=CFrame.new(-1004.32, 80.15, 1424.61) },
+    { minLv=775,  maxLv=799,  world=2, mob="Swan Pirate",        quest="Area2Quest",         qlv=1, island="Kingdom of Rose", questCF=CFrame.new(638.43, 71.76, 918.28),   mobCF=CFrame.new(1068.66, 137.61, 1322.10) },
+    { minLv=800,  maxLv=874,  world=2, mob="Factory Staff",      quest="Area2Quest",         qlv=2, island="Factory",         questCF=CFrame.new(632.69, 73.10, 918.66),   mobCF=CFrame.new(73.07, 81.86, -27.47) },
+    { minLv=875,  maxLv=899,  world=2, mob="Marine Lieutenant",  quest="MarineQuest3",       qlv=1, island="Marine Fortress", questCF=CFrame.new(-2440.79, 71.71, -3216.06),mobCF=CFrame.new(-2821.37, 75.89, -3070.08) },
+    { minLv=900,  maxLv=949,  world=2, mob="Marine Captain",     quest="MarineQuest3",       qlv=2, island="Marine Fortress", questCF=CFrame.new(-2440.79, 71.71, -3216.06),mobCF=CFrame.new(-1861.23, 80.17, -3254.69) },
+    { minLv=950,  maxLv=974,  world=2, mob="Zombie",             quest="ZombieQuest",        qlv=1, island="Graveyard",       questCF=CFrame.new(-5497.06, 47.59, -795.23), mobCF=CFrame.new(-5657.77, 78.96, -928.68) },
+    { minLv=975,  maxLv=999,  world=2, mob="Vampire",            quest="ZombieQuest",        qlv=2, island="Graveyard",       questCF=CFrame.new(-5497.06, 47.59, -795.23), mobCF=CFrame.new(-6037.66, 32.18, -1340.65) },
+    { minLv=1000, maxLv=1049, world=2, mob="Snow Trooper",       quest="SnowMountainQuest",  qlv=1, island="Snow Mountain",   questCF=CFrame.new(609.85, 400.11, -5372.25), mobCF=CFrame.new(549.14, 427.38, -5563.69) },
+    { minLv=1050, maxLv=1099, world=2, mob="Winter Warrior",     quest="SnowMountainQuest",  qlv=2, island="Snow Mountain",   questCF=CFrame.new(609.85, 400.11, -5372.25), mobCF=CFrame.new(1142.74, 475.63, -5199.41) },
+    { minLv=1100, maxLv=1124, world=2, mob="Lab Subordinate",    quest="IceSideQuest",       qlv=1, island="Frosted Island",  questCF=CFrame.new(-6064.06, 15.24, -4902.97),mobCF=CFrame.new(-5707.47, 15.95, -4513.39) },
+    { minLv=1125, maxLv=1174, world=2, mob="Horned Warrior",     quest="IceSideQuest",       qlv=2, island="Frosted Island",  questCF=CFrame.new(-6064.06, 15.24, -4902.97),mobCF=CFrame.new(-6341.36, 15.95, -5723.16) },
+    { minLv=1175, maxLv=1199, world=2, mob="Magma Ninja",        quest="FireSideQuest",      qlv=1, island="Hot and Cold",    questCF=CFrame.new(-5428.03, 15.06, -5299.43),mobCF=CFrame.new(-5449.67, 76.65, -5808.20) },
+    { minLv=1200, maxLv=1249, world=2, mob="Lava Pirate",        quest="FireSideQuest",      qlv=2, island="Hot and Cold",    questCF=CFrame.new(-5428.03, 15.06, -5299.43),mobCF=CFrame.new(-5213.33, 49.73, -4701.45) },
+    { minLv=1250, maxLv=1274, world=2, mob="Ship Deckhand",      quest="ShipQuest1",         qlv=1, island="Cursed Ship",     questCF=CFrame.new(1037.80, 125.09, 32911.60),mobCF=CFrame.new(1212.01, 150.79, 33059.24) },
+    { minLv=1275, maxLv=1299, world=2, mob="Ship Engineer",      quest="ShipQuest1",         qlv=2, island="Cursed Ship",     questCF=CFrame.new(1037.80, 125.09, 32911.60),mobCF=CFrame.new(919.47, 43.54, 32779.96) },
+    { minLv=1300, maxLv=1324, world=2, mob="Ship Steward",       quest="ShipQuest2",         qlv=1, island="Cursed Ship",     questCF=CFrame.new(968.80, 125.09, 33244.12), mobCF=CFrame.new(919.43, 129.55, 33436.03) },
+    { minLv=1325, maxLv=1349, world=2, mob="Ship Officer",       quest="ShipQuest2",         qlv=2, island="Cursed Ship",     questCF=CFrame.new(968.80, 125.09, 33244.12), mobCF=CFrame.new(1036.01, 181.43, 33315.72) },
+    { minLv=1350, maxLv=1374, world=2, mob="Arctic Warrior",     quest="FrostQuest",         qlv=1, island="Frosted Island",  questCF=CFrame.new(5667.65, 26.79, -6486.08), mobCF=CFrame.new(5966.24, 62.97, -6179.38) },
+    { minLv=1375, maxLv=1424, world=2, mob="Snow Lurker",        quest="FrostQuest",         qlv=2, island="Frosted Island",  questCF=CFrame.new(5667.65, 26.79, -6486.08), mobCF=CFrame.new(5407.07, 69.19, -6880.88) },
+    { minLv=1425, maxLv=1449, world=2, mob="Sea Soldier",        quest="ForgottenQuest",     qlv=1, island="Forgotten Island",questCF=CFrame.new(-3054.44, 235.54, -10142.81),mobCF=CFrame.new(-3028.22, 64.67, -9775.42) },
+    { minLv=1450, maxLv=1499, world=2, mob="Water Fighter",      quest="ForgottenQuest",     qlv=2, island="Forgotten Island",questCF=CFrame.new(-3054.44, 235.54, -10142.81),mobCF=CFrame.new(-3352.90, 285.01, -10534.84) },
+    -- ═══ SEA 3 ═══
+    { minLv=1500, maxLv=1524, world=3, mob="Pirate Millionaire",    quest="PiratePortQuest",     qlv=1, island="Port Town",      questCF=CFrame.new(-290.07, 42.90, 5581.58), mobCF=CFrame.new(-245.99, 47.30, 5584.10) },
+    { minLv=1525, maxLv=1574, world=3, mob="Pistol Billionaire",    quest="PiratePortQuest",     qlv=2, island="Port Town",      questCF=CFrame.new(-290.07, 42.90, 5581.58), mobCF=CFrame.new(-187.33, 86.23, 6013.51) },
+    { minLv=1575, maxLv=1599, world=3, mob="Dragon Crew Warrior",   quest="AmazonQuest",         qlv=1, island="Hydra Island",   questCF=CFrame.new(5832.83, 51.68, -1101.51),mobCF=CFrame.new(6141.14, 51.35, -1340.73) },
+    { minLv=1600, maxLv=1624, world=3, mob="Dragon Crew Archer",    quest="AmazonQuest",         qlv=2, island="Hydra Island",   questCF=CFrame.new(5833.11, 51.60, -1103.06),mobCF=CFrame.new(6616.41, 441.76, 446.04) },
+    { minLv=1625, maxLv=1649, world=3, mob="Female Islander",       quest="AmazonQuest2",        qlv=1, island="Hydra Island",   questCF=CFrame.new(5446.87, 601.62, 749.45), mobCF=CFrame.new(4685.25, 735.80, 815.34) },
+    { minLv=1650, maxLv=1699, world=3, mob="Giant Islander",        quest="AmazonQuest2",        qlv=2, island="Hydra Island",   questCF=CFrame.new(5446.87, 601.62, 749.45), mobCF=CFrame.new(4729.09, 590.43, -36.97) },
+    { minLv=1700, maxLv=1724, world=3, mob="Marine Commodore",      quest="MarineTreeIsland",    qlv=1, island="Great Tree",     questCF=CFrame.new(2180.54, 27.81, -6741.54),mobCF=CFrame.new(2286.00, 73.13, -7159.80) },
+    { minLv=1725, maxLv=1774, world=3, mob="Marine Rear Admiral",   quest="MarineTreeIsland",    qlv=2, island="Great Tree",     questCF=CFrame.new(2179.98, 28.73, -6740.05),mobCF=CFrame.new(3656.77, 160.52, -7001.59) },
+    { minLv=1775, maxLv=1799, world=3, mob="Fishman Raider",        quest="DeepForestIsland3",   qlv=1, island="Floating Turtle",questCF=CFrame.new(-10581.65, 330.87, -8761.18),mobCF=CFrame.new(-10407.52, 331.76, -8368.51) },
+    { minLv=1800, maxLv=1824, world=3, mob="Fishman Captain",       quest="DeepForestIsland3",   qlv=2, island="Floating Turtle",questCF=CFrame.new(-10581.65, 330.87, -8761.18),mobCF=CFrame.new(-10994.70, 352.38, -9002.11) },
+    { minLv=1825, maxLv=1849, world=3, mob="Forest Pirate",         quest="DeepForestIsland",    qlv=1, island="Floating Turtle",questCF=CFrame.new(-13234.04, 331.48, -7625.40),mobCF=CFrame.new(-13274.47, 332.37, -7769.58) },
+    { minLv=1850, maxLv=1899, world=3, mob="Mythological Pirate",   quest="DeepForestIsland",    qlv=2, island="Floating Turtle",questCF=CFrame.new(-13234.04, 331.48, -7625.40),mobCF=CFrame.new(-13680.60, 501.08, -6991.18) },
+    { minLv=1900, maxLv=1924, world=3, mob="Jungle Pirate",         quest="DeepForestIsland2",   qlv=1, island="Floating Turtle",questCF=CFrame.new(-12680.38, 389.97, -9902.01),mobCF=CFrame.new(-12256.16, 331.73, -10485.83) },
+    { minLv=1925, maxLv=1974, world=3, mob="Musketeer Pirate",      quest="DeepForestIsland2",   qlv=2, island="Floating Turtle",questCF=CFrame.new(-12680.38, 389.97, -9902.01),mobCF=CFrame.new(-13457.90, 391.54, -9859.17) },
+    { minLv=1975, maxLv=1999, world=3, mob="Reborn Skeleton",       quest="HauntedQuest1",       qlv=1, island="Haunted Castle", questCF=CFrame.new(-9479.21, 141.21, 5566.09),mobCF=CFrame.new(-8763.72, 165.72, 6159.86) },
+    { minLv=2000, maxLv=2024, world=3, mob="Living Zombie",         quest="HauntedQuest1",       qlv=2, island="Haunted Castle", questCF=CFrame.new(-9479.21, 141.21, 5566.09),mobCF=CFrame.new(-10144.13, 138.62, 5838.08) },
+    { minLv=2025, maxLv=2049, world=3, mob="Demonic Soul",          quest="HauntedQuest2",       qlv=1, island="Haunted Castle", questCF=CFrame.new(-9516.99, 172.01, 6078.46),mobCF=CFrame.new(-9505.87, 172.10, 6158.99) },
+    { minLv=2050, maxLv=2074, world=3, mob="Posessed Mummy",        quest="HauntedQuest2",       qlv=2, island="Haunted Castle", questCF=CFrame.new(-9516.99, 172.01, 6078.46),mobCF=CFrame.new(-9582.02, 6.25, 6205.47) },
+    { minLv=2075, maxLv=2099, world=3, mob="Peanut Scout",          quest="NutsIslandQuest",     qlv=1, island="Peanut Island",  questCF=CFrame.new(-2104.39, 38.10, -10194.21),mobCF=CFrame.new(-2143.24, 47.72, -10029.99) },
+    { minLv=2100, maxLv=2124, world=3, mob="Peanut President",      quest="NutsIslandQuest",     qlv=2, island="Peanut Island",  questCF=CFrame.new(-2104.39, 38.10, -10194.21),mobCF=CFrame.new(-1859.35, 38.10, -10422.42) },
+    { minLv=2125, maxLv=2149, world=3, mob="Ice Cream Chef",        quest="IceCreamIslandQuest", qlv=1, island="Ice Cream Island",questCF=CFrame.new(-820.64, 65.81, -10965.79),mobCF=CFrame.new(-872.24, 65.81, -10919.95) },
+    { minLv=2150, maxLv=2199, world=3, mob="Ice Cream Commander",   quest="IceCreamIslandQuest", qlv=2, island="Ice Cream Island",questCF=CFrame.new(-820.64, 65.81, -10965.79),mobCF=CFrame.new(-558.06, 112.04, -11290.77) },
+    { minLv=2200, maxLv=2224, world=3, mob="Cookie Crafter",        quest="CakeQuest1",          qlv=1, island="Cake Island",    questCF=CFrame.new(-2021.32, 37.79, -12028.72),mobCF=CFrame.new(-2374.13, 37.79, -12125.30) },
+    { minLv=2225, maxLv=2249, world=3, mob="Cake Guard",            quest="CakeQuest1",          qlv=2, island="Cake Island",    questCF=CFrame.new(-2021.32, 37.79, -12028.72),mobCF=CFrame.new(-1598.30, 43.77, -12244.58) },
+    { minLv=2250, maxLv=2274, world=3, mob="Baking Staff",          quest="CakeQuest2",          qlv=1, island="Cake Island",    questCF=CFrame.new(-1927.91, 37.79, -12842.53),mobCF=CFrame.new(-1887.80, 77.61, -12998.35) },
+    { minLv=2275, maxLv=2299, world=3, mob="Head Baker",            quest="CakeQuest2",          qlv=2, island="Cake Island",    questCF=CFrame.new(-1927.91, 37.79, -12842.53),mobCF=CFrame.new(-2216.18, 82.88, -12869.29) },
+    { minLv=2300, maxLv=2324, world=3, mob="Cocoa Warrior",         quest="ChocQuest1",          qlv=1, island="Chocolate Island",questCF=CFrame.new(233.22, 29.87, -12201.23),mobCF=CFrame.new(-21.55, 80.57, -12352.38) },
+    { minLv=2325, maxLv=2349, world=3, mob="Chocolate Bar Battler", quest="ChocQuest1",          qlv=2, island="Chocolate Island",questCF=CFrame.new(233.22, 29.87, -12201.23),mobCF=CFrame.new(582.59, 77.18, -12463.16) },
+    { minLv=2350, maxLv=2374, world=3, mob="Sweet Thief",           quest="ChocQuest2",          qlv=1, island="Chocolate Island",questCF=CFrame.new(150.50, 30.69, -12774.50),mobCF=CFrame.new(165.18, 76.05, -12600.83) },
+    { minLv=2375, maxLv=2399, world=3, mob="Candy Rebel",           quest="ChocQuest2",          qlv=2, island="Chocolate Island",questCF=CFrame.new(150.50, 30.69, -12774.50),mobCF=CFrame.new(134.86, 77.24, -12876.54) },
+    { minLv=2400, maxLv=2424, world=3, mob="Candy Pirate",          quest="CandyQuest1",         qlv=1, island="Candy Island",  questCF=CFrame.new(-1150.04, 20.37, -14446.33),mobCF=CFrame.new(-1310.50, 26.01, -14562.40) },
+    { minLv=2425, maxLv=2449, world=3, mob="Snow Demon",            quest="CandyQuest1",         qlv=2, island="Candy Island",  questCF=CFrame.new(-1150.04, 20.37, -14446.33),mobCF=CFrame.new(-880.20, 71.24, -14538.60) },
+    { minLv=2450, maxLv=2474, world=3, mob="Isle Outlaw",           quest="TikiQuest1",          qlv=1, island="Tiki Outpost",  questCF=CFrame.new(-16547.74, 61.13, -173.41),mobCF=CFrame.new(-16442.81, 116.13, -264.46) },
+    { minLv=2475, maxLv=2524, world=3, mob="Island Boy",            quest="TikiQuest1",          qlv=2, island="Tiki Outpost",  questCF=CFrame.new(-16547.74, 61.13, -173.41),mobCF=CFrame.new(-16901.26, 84.06, -192.88) },
+    { minLv=2525, maxLv=2550, world=3, mob="Isle Champion",         quest="TikiQuest2",          qlv=2, island="Tiki Outpost",  questCF=CFrame.new(-16539.07, 55.68, 1051.57),mobCF=CFrame.new(-16641.67, 235.78, 1031.28) },
+    { minLv=2551, maxLv=2850, world=3, mob="Isle Champion",         quest="TikiQuest2",          qlv=2, island="Tiki Outpost",  questCF=CFrame.new(-16539.07, 55.68, 1051.57),mobCF=CFrame.new(-16641.67, 235.78, 1031.28) },
+}
+
+getgenv().ChuppyQuestDB = QuestDB
+print("[Chuppy Farm] Phần 3.0 hoàn thành: Quest Database (" .. #QuestDB .. " entries)")
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [3.1] QUEST LOOKUP FUNCTIONS
+-- ═══════════════════════════════════════════════════════════════════════════════
+local Quest = {}
+
+function Quest.Find(level, world)
+    level = level or State.PlayerData.Level
+    world = world or State.World
+    for _, entry in ipairs(QuestDB) do
+        if entry.world == world and level >= entry.minLv and level <= entry.maxLv then
+            return entry
+        end
+    end
+    return nil
+end
+
+function Quest.FindByMob(mobName)
+    local search = string.lower(mobName or "")
+    for _, entry in ipairs(QuestDB) do
+        if string.lower(entry.mob) == search then return entry end
+    end
+    return nil
+end
+
+function Quest.GetCurrentIsland()
+    local q = Quest.Find()
+    return q and q.island or "Unknown"
+end
+
+function Quest.GetAllInWorld(world)
+    local list = {}
+    for _, entry in ipairs(QuestDB) do if entry.world == world then table.insert(list, entry) end end
+    return list
+end
+
+function Quest.GetIslandList(world)
+    local seen = {}
+    local list = {}
+    for _, entry in ipairs(QuestDB) do
+        if entry.world == world and not seen[entry.island] then
+            seen[entry.island] = true
+            table.insert(list, entry.island)
+        end
+    end
+    return list
+end
+
+getgenv().ChuppyQuest = Quest
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [3.2] QUEST STATUS READER
+-- ═══════════════════════════════════════════════════════════════════════════════
+local QuestStatus = {}
+
+local function GetMainGui()
+    local pg = LP:FindFirstChild("PlayerGui")
+    return pg and pg:FindFirstChild("Main")
+end
+
+function QuestStatus.GetInfo()
+    local main = GetMainGui()
+    if not main then return { hasQuest = false, title = "", mob = "", progress = 0, goal = 0 } end
+    local questUI = main:FindFirstChild("Quest")
+    if not questUI or not questUI.Visible then return { hasQuest = false, title = "", mob = "", progress = 0, goal = 0 } end
+
+    local title = ""
+    local mob = ""
+    pcall(function()
+        local container = questUI:FindFirstChild("Container")
+        if container then
+            local qTitle = container:FindFirstChild("QuestTitle")
+            if qTitle and qTitle:FindFirstChild("Title") then title = qTitle.Title.Text or "" end
+        end
+    end)
+
+    if title ~= "" then
+        pcall(function()
+            local m = string.match(title, "Defeat%s+%d+%s+(.+)")
+            if m then mob = m end
+        end)
+    end
+    return { hasQuest = true, title = title, mob = mob, progress = 0, goal = 0 }
+end
+
+function QuestStatus.IsOnQuest(questName, mobName)
+    local info = QuestStatus.GetInfo()
+    if not info.hasQuest then return false end
+    if mobName then
+        local lower = string.lower(mobName)
+        if not string.find(string.lower(info.title), lower, 1, true) then return false end
+    end
+    return true
+end
+
+function QuestStatus.HasActive() return QuestStatus.GetInfo().hasQuest end
+getgenv().ChuppyQuestStatus = QuestStatus
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [3.3] TELEPORT HELPERS (Phải đặt trước QuestAction)
+-- ═══════════════════════════════════════════════════════════════════════════════
+local Farm = {}
+local currentTween = nil
+local currentTweenTarget = nil
+
+function Farm.Teleport(targetCF, speed)
+    if not targetCF then return false end
+    local hrp = PlayerUtils.GetHRP()
+    if not hrp then return false end
+    speed = speed or State.FarmSpeed or 350
+
+    if currentTween then pcall(function() currentTween:Cancel() end); currentTween = nil end
+
+    local dist = (hrp.Position - targetCF.Position).Magnitude
+    if dist < 3 then hrp.CFrame = targetCF; return true end
+
+    local time = math.clamp(dist / speed, 0.05, 5)
+    local tween = TweenService:Create(hrp, TweenInfo.new(time, Enum.EasingStyle.Linear, Enum.EasingDirection.Out), { CFrame = targetCF })
+    currentTween = tween
+    currentTweenTarget = targetCF
+    tween:Play()
+
+    tween.Completed:Once(function()
+        if currentTween == tween then currentTween = nil; currentTweenTarget = nil end
+    end)
+    return true
+end
+
+function Farm.StopTween()
+    if currentTween then pcall(function() currentTween:Cancel() end); currentTween = nil; currentTweenTarget = nil end
+end
+
+function Farm.Snap(targetCF)
+    local hrp = PlayerUtils.GetHRP()
+    if not hrp or not targetCF then return false end
+    hrp.CFrame = targetCF
+    return true
+end
+
+function Farm.TeleportAbove(targetCF, height)
+    height = height or 20
+    return Farm.Teleport(targetCF + Vector3.new(0, height, 0))
+end
+getgenv().ChuppyFarm = Farm
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [3.4] AUTO START / ABANDON QUEST
+-- ═══════════════════════════════════════════════════════════════════════════════
+local QuestAction = {}
+
+function QuestAction.Abandon()
+    if not Remote then return false end
+    return Remote.Invoke("AbandonQuest")
+end
+
+function QuestAction.Start(questName, qlv)
+    if not Remote then return false end
+    return Remote.Invoke("StartQuest", questName, qlv)
+end
+
+function QuestAction.AutoStart(targetQuest)
+    if not targetQuest then return false end
+    local info = QuestStatus.GetInfo()
+    local needSwitch = false
+
+    if not info.hasQuest then
+        needSwitch = true
+    elseif not string.find(string.lower(info.title), string.lower(targetQuest.mob), 1, true) then
+        needSwitch = true
+    end
+
+    if not needSwitch then return false end
+
+    if info.hasQuest then
+        QuestAction.Abandon()
+        task.wait(0.3)
+    end
+
+    Farm.Teleport(targetQuest.questCF)
+    task.wait(1)
+    local ok = QuestAction.Start(targetQuest.quest, targetQuest.qlv)
+    task.wait(0.5)
+    return ok ~= nil
+end
+getgenv().ChuppyQuestAction = QuestAction
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [3.5] COMBAT HELPERS
+-- ═══════════════════════════════════════════════════════════════════════════════
+local Combat = {}
+
+function Combat.EquipWeapon(weaponType)
+    if not weaponType then return false end
+    local char = PlayerUtils.GetCharacter()
+    if not char then return false end
+    local hum = PlayerUtils.GetHumanoid()
+    if not hum then return false end
+    local current = char:FindFirstChildOfClass("Tool")
+    if current and current.ToolTip == weaponType then return true end
+    for _, tool in pairs(LP.Backpack:GetChildren()) do
+        if tool:IsA("Tool") and tool.ToolTip == weaponType then
+            pcall(function() hum:EquipTool(tool) end)
+            return true
+        end
+    end
+    return false
+end
+
+function Combat.AutoHaki()
+    local char = PlayerUtils.GetCharacter()
+    if not char then return end
+    if not char:FindFirstChild("HasBuso") then
+        pcall(function() Remote.Buso() end)
+    end
+end
+
+function Combat.Attack()
+    local char = PlayerUtils.GetCharacter()
+    if not char then return end
+    local tool = char:FindFirstChildOfClass("Tool")
+    if tool then pcall(function() tool:Activate() end) end
+end
+
+function Combat.VirtualAttack()
+    pcall(function()
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton1(Vector2.new(1280, 672))
+    end)
+end
+
+function Combat.AttackMix() Combat.Attack(); Combat.VirtualAttack() end
+
+local noclipConn = nil
+function Combat.SetNoclip(enable)
+    if enable then
+        if noclipConn then return end
+        noclipConn = RunService.Stepped:Connect(function()
+            local char = PlayerUtils.GetCharacter()
+            if not char then return end
+            for _, p in pairs(char:GetDescendants()) do
+                if p:IsA("BasePart") and p.CanCollide then p.CanCollide = false end
+            end
+        end)
+        Track(noclipConn)
+    else
+        if noclipConn then noclipConn:Disconnect(); noclipConn = nil end
+    end
+end
+
+function Combat.FreezeMob(mob)
+    if not mob then return end
+    pcall(function()
+        local hrp = mob:FindFirstChild("HumanoidRootPart")
+        local hum = mob:FindFirstChildOfClass("Humanoid")
+        if hrp then hrp.CanCollide = false end
+        if hum then hum.WalkSpeed = 0; hum.JumpPower = 0 end
+    end)
+end
+
+function Combat.SetWalkSpeed(speed)
+    local hum = PlayerUtils.GetHumanoid()
+    if hum then hum.WalkSpeed = speed end
+end
+
+function Combat.SetJumpPower(power)
+    local hum = PlayerUtils.GetHumanoid()
+    if hum then hum.JumpPower = power end
+end
+getgenv().ChuppyCombat = Combat
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [3.6] AUTO FARM LEVEL LOOP
+-- ═══════════════════════════════════════════════════════════════════════════════
+local lastPos = Vector3.zero
+local lastPosTime = tick()
+local stuckCount = 0
+local lastLevel = PlayerUtils.GetLevel()
+
+local function FarmStep()
+    PlayerUtils.UpdateData()
+    local level = State.PlayerData.Level
+    local world = State.World
+
+    if level > lastLevel then
+        local Webhook = getgenv().ChuppyWebhook
+        if Webhook then Webhook.LevelUp(lastLevel, level) end
+        Notify("Level Up", "Lv " .. lastLevel .. " → " .. level, "success")
+        lastLevel = level
+    end
+
+    local quest = Quest.Find(level, world)
+    if not quest then Notify("Farm", "Không có quest cho level " .. level, "warning"); task.wait(2); return end
+
+    State.CurrentQuest = quest
+    local mode = State.CurrentFarmMode or "Quest"
+
+    if mode == "Quest" then
+        local info = QuestStatus.GetInfo()
+        if not info.hasQuest or not string.find(string.lower(info.title), string.lower(quest.mob), 1, true) then
+            QuestAction.AutoStart(quest)
+            return
+        end
+
+        local mob = Monster.Find(quest.mob)
+        if not mob then Farm.Teleport(quest.mobCF + Vector3.new(0, 15, 0)); return end
+        if not Monster.IsAlive(mob) then return end
+
+        State.CurrentTarget = mob
+        local hrp = PlayerUtils.GetHRP()
+        if not hrp then return end
+
+        local mobPos = mob.HumanoidRootPart.Position + Vector3.new(0, State.Height or 15, 0)
+        Farm.Teleport(CFrame.new(mobPos), 320)
+
+        Combat.EquipWeapon(State.CurrentWeapon or "Melee")
+        if State.AutoHaki then Combat.AutoHaki() end
+        Combat.Attack()
+
+        if State.BringMob then Monster.Bring(mob, hrp.CFrame * CFrame.new(0, 0, -5)) end
+        Combat.FreezeMob(mob)
+
+        task.spawn(function()
+            local h = mob:FindFirstChildOfClass("Humanoid")
+            if h then
+                local conn
+                conn = h.Died:Connect(function()
+                    State.Stats.MobsKilled = State.Stats.MobsKilled + 1
+                    if conn then conn:Disconnect() end
+                end)
+            end
+        end)
+    else
+        local mob = Monster.FindNearest(3000)
+        if not mob then return end
+        local hrp = PlayerUtils.GetHRP()
+        if not hrp then return end
+
+        local mobPos = mob.HumanoidRootPart.Position + Vector3.new(0, 15, 0)
+        Farm.Teleport(CFrame.new(mobPos), 320)
+        Combat.EquipWeapon(State.CurrentWeapon or "Melee")
+        if State.AutoHaki then Combat.AutoHaki() end
+        Combat.Attack()
+        if State.BringMob then Monster.Bring(mob, hrp.CFrame * CFrame.new(0, 0, -5)) end
+    end
+
+    local hrp = PlayerUtils.GetHRP()
+    if hrp then
+        if (hrp.Position - lastPos).Magnitude < 1 then
+            if tick() - lastPosTime > 5 then
+                stuckCount = stuckCount + 1
+                if stuckCount >= 2 then hrp.CFrame = hrp.CFrame + Vector3.new(0, 20, 0); stuckCount = 0 end
+                lastPosTime = tick()
+            end
+        else
+            lastPosTime = tick()
+            stuckCount = 0
+        end
+        lastPos = hrp.Position
+    end
+end
+
+SafeSpawn(function()
+    while State.Running do
+        task.wait(State.TickRate or 0.1)
+        if State.AutoFarm and PlayerUtils.IsAlive() then
+            local ok, err = pcall(FarmStep)
+            if not ok then warn("[Chuppy Farm] Error:", err); task.wait(1) end
+        end
+    end
+end)
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [3.7] LEVEL STATS TRACKING
+-- ═══════════════════════════════════════════════════════════════════════════════
+local LevelStats = {}
+local startLevel = PlayerUtils.GetLevel()
+
+function LevelStats.GetSession()
+    local cur = PlayerUtils.GetLevel()
+    return {
+        startLevel = startLevel, currentLevel = cur, levelsGained = cur - startLevel,
+        mobsKilled = State.Stats.MobsKilled, sessionTime = math.floor(tick() - State.StartTime), perMinute = 0,
+    }
+end
+
+function LevelStats.FormatSession()
+    local s = LevelStats.GetSession()
+    local mins = math.max(1, math.floor(s.sessionTime / 60))
+    local killsPerMin = math.floor(s.mobsKilled / mins)
+    return string.format("[Lv %d→%d] +%d lvl | %d kills | %.1f kills/phút", s.startLevel, s.currentLevel, s.levelsGained, s.mobsKilled, killsPerMin)
+end
+getgenv().ChuppyLevelStats = LevelStats
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- [3.8] PUBLIC API + INIT
+-- ═══════════════════════════════════════════════════════════════════════════════
+local Chuppy = getgenv().Chuppy
+Chuppy.Quest        = Quest
+Chuppy.QuestStatus  = QuestStatus
+Chuppy.QuestAction  = QuestAction
+Chuppy.Combat       = Combat
+Chuppy.LevelStats   = LevelStats
+Chuppy.Farm.Find      = Quest.Find
+Chuppy.Farm.GetIsland = Quest.GetCurrentIsland
+
+function Chuppy.StartFarm()
+    State.AutoFarm = true
+    Notify("Auto Farm", "Đã BẬT", "success")
+end
+
+function Chuppy.StopFarm()
+    State.AutoFarm = false
+    Farm.StopTween()
+    Notify("Auto Farm", "Đã TẮT", "warning")
+end
+
+function Chuppy.ToggleFarm()
+    if State.AutoFarm then Chuppy.StopFarm() else Chuppy.StartFarm() end
+end
+
+function Chuppy.SetFarmMode(mode)
+    State.CurrentFarmMode = mode
+    Notify("Farm", "Mode: " .. mode, "info")
+end
+
+function Chuppy.SetWeapon(weaponType)
+    State.CurrentWeapon = weaponType
+    Combat.EquipWeapon(weaponType)
+    Notify("Weapon", "Đã chọn: " .. weaponType, "info")
+end
+
+if State.CurrentWeapon then Combat.EquipWeapon(State.CurrentWeapon) end
+
+print("[Chuppy Farm] ✅ LƯỢT 3/10 hoàn tất — Quest DB + Auto Farm Level")
+]==])()
