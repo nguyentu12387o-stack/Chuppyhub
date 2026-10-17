@@ -103,7 +103,11 @@ end
 local function InvokeServer(...)
     local commF = GetCommF()
     if not commF then return nil end
-    local ok, res = pcall(function() return commF:InvokeServer(...) end)
+    local args = { ... }
+    local unpackFn = table.unpack or unpack
+    local ok, res = pcall(function()
+        return commF:InvokeServer(unpackFn(args))
+    end)
     if not ok then
         warn("[MasterHub] InvokeServer error:", res)
     end
