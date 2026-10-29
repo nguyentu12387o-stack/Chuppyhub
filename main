@@ -1,0 +1,70 @@
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Tạo ScreenGui chứa menu
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ChuppyHubLoader"
+ScreenGui.ResetOnSpawn = false
+
+pcall(function()
+    ScreenGui.Parent = CoreGui
+end)
+if not ScreenGui.Parent then
+    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+end
+
+-- Khung menu màu xanh dương
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 360, 0, 150)
+MainFrame.Position = UDim2.new(0.5, -180, 0.5, -75)
+MainFrame.BackgroundColor3 = Color3.fromRGB(24, 119, 242)
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 12)
+UICorner.Parent = MainFrame
+
+-- Tiêu đề Hub
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.Position = UDim2.new(0, 0, 0, 15)
+Title.BackgroundTransparency = 1
+Title.Text = "CHUPPY HUB"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 22
+Title.Font = Enum.Font.GothamBold
+Title.Parent = MainFrame
+
+-- Dòng trạng thái / Đếm ngược
+local StatusText = Instance.new("TextLabel")
+StatusText.Size = UDim2.new(1, -20, 0, 60)
+StatusText.Position = UDim2.new(0, 10, 0, 65)
+StatusText.BackgroundTransparency = 1
+StatusText.Text = "Đang chuẩn bị script...\nVui lòng đợi 5 giây nhé!"
+StatusText.TextColor3 = Color3.fromRGB(235, 242, 255)
+StatusText.TextSize = 15
+StatusText.Font = Enum.Font.GothamMedium
+StatusText.TextWrapped = true
+StatusText.Parent = MainFrame
+
+-- Tiến hành đếm ngược 5 giây rồi load script
+task.spawn(function()
+    for i = 5, 1, -1 do
+        StatusText.Text = "Đang chuẩn bị script...\nVui lòng đợi " .. i .. " giây nhé!"
+        task.wait(1)
+    end
+    
+    -- Xóa menu loader trước khi bật script chính
+    ScreenGui:Destroy()
+    
+    -- Load script chính từ link mới
+    local success, err = pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/nguyentu12387o-stack/Chuppyhub/refs/heads/main/obf_SP6UvTd5zDv8EZqlWoxckhXiL1qala934798ml7A68M5M0Nv905U4Mo7XOXH5GAO.lua.txt"))()
+    end)
+    
+    if not success then
+        warn("Lỗi khi load script: " .. tostring(err))
+    end
+end)
